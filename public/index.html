@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rabbit Trail - The Daily Story App for Curious Minds</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-serif-story { font-family: 'Newsreader', serif; }
+    .font-display { font-family: 'Cinzel', serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #18181b; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen antialiased selection:bg-amber-500 selection:text-black">
+
+  <!-- Navigation Bar -->
+  <header class="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center font-bold text-zinc-950 text-lg shadow-lg shadow-amber-500/20">
+          🐇
+        </div>
+        <span class="font-display font-bold text-xl tracking-wider bg-gradient-to-r from-zinc-100 via-amber-200 to-amber-500 bg-clip-text text-transparent">
+          Rabbit Trail
+        </span>
+      </div>
+
+      <!-- Tab Navigation -->
+      <nav class="flex items-center gap-1 sm:gap-2 text-sm font-medium">
+        <button onclick="switchTab('quiz')" id="tab-quiz" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white transition">
+          1. Archetype Quiz
+        </button>
+        <button onclick="switchTab('story')" id="tab-story" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white transition">
+          2. Daily Story
+        </button>
+        <button onclick="switchTab('connections')" id="tab-connections" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white transition">
+          3. Connection Finder
+        </button>
+        <button onclick="switchTab('streak')" id="tab-streak" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white transition">
+          4. Anti-Guilt Streak
+        </button>
+      </nav>
+
+      <!-- User Active Archetype Pill -->
+      <div id="active-archetype-badge" class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs font-semibold">
+        <span>Active:</span>
+        <span id="badge-name">The Detective</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-8">
+
+    <!-- TAB 1: ONBOARDING QUIZ -->
+    <section id="section-quiz" class="space-y-6">
+      <div class="text-center max-w-xl mx-auto mb-8">
+        <span class="text-xs uppercase tracking-widest text-amber-400 font-semibold">Step 1 • Onboarding</span>
+        <h1 class="text-3xl sm:text-4xl font-bold mt-2 text-zinc-100 font-display">Discover Your Curiosity Archetype</h1>
+        <p class="text-zinc-400 text-sm mt-3">Six intuitive real-world scenarios that reveal whether you navigate through maps, disputes, ancient strata, unexpected sparks, or first-principles.</p>
+      </div>
+
+      <div id="quiz-container" class="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div class="flex items-center justify-between text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-800">
+          <span id="quiz-context-label">Entering unfamiliar territory</span>
+          <span id="quiz-progress-label">Question 1 of 6</span>
+        </div>
+
+        <h2 id="quiz-question-text" class="text-xl sm:text-2xl font-semibold mb-6 text-zinc-100 leading-snug">
+          You arrive in an ancient walled city you've never visited. What is the very first thing you do?
+        </h2>
+
+        <div id="quiz-options-list" class="space-y-3">
+          <!-- Dynamic Options rendered by JS -->
+        </div>
+
+        <!-- Result Card Preview (hidden until completed) -->
+        <div id="quiz-result-view" class="hidden text-center py-6">
+          <div class="inline-flex p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-4xl mb-4" id="res-icon">
+            🔍
+          </div>
+          <h3 class="text-2xl font-bold text-zinc-100" id="res-name">The Detective</h3>
+          <p class="text-amber-400 text-sm font-medium mt-1 italic" id="res-tagline">"You start with the dispute, the contradiction, and the forensic evidence."</p>
+          <p class="text-zinc-300 text-sm max-w-lg mx-auto mt-4 leading-relaxed" id="res-desc"></p>
+
+          <div class="mt-6 flex flex-wrap justify-center gap-2" id="res-traits">
+            <!-- Traits badges -->
+          </div>
+
+          <div class="mt-8 flex justify-center gap-4">
+            <button onclick="shareProfileCard()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-amber-500/20">
+              📋 Share Profile Card
+            </button>
+            <button onclick="switchTab('story')" class="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-semibold rounded-xl text-sm transition">
+              Read Today's Story in Your Style →
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DAILY SOURCED STORY -->
+    <section id="section-story" class="hidden space-y-6">
+      <!-- Story Controls & Persona Switcher -->
+      <div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+        <div>
+          <span class="text-xs uppercase tracking-widest text-zinc-400 font-semibold">Today's Story Drop • Oct 16</span>
+          <h2 class="text-lg font-bold text-zinc-100">The Great Bottleneck at the Venetian Arsenal (1570)</h2>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-zinc-400 font-medium">Read as:</label>
+          <select id="story-archetype-select" onchange="changeStoryArchetype(this.value)" class="bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-amber-500">
+            <option value="detective">The Detective (Evidence & Dispute)</option>
+            <option value="cartographer">The Cartographer (System & Maps)</option>
+            <option value="archaeologist">The Archaeologist (Origins & Timeline)</option>
+            <option value="magpie">The Magpie (Anecdotes & Parallels)</option>
+            <option value="alchemist">The Alchemist (Transformations & Models)</option>
+            <option value="apprentice">The Apprentice (Foundations & Craft)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Story Article Body -->
+      <article class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8 font-serif-story text-zinc-200 leading-relaxed text-lg">
+        <!-- Hook & Opening -->
+        <div class="border-b border-zinc-800 pb-6">
+          <span class="text-xs font-sans uppercase font-bold tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md">
+            Adapted Hook
+          </span>
+          <p id="story-hook" class="mt-4 text-2xl sm:text-3xl font-semibold text-zinc-100 font-display italic leading-tight">
+            "The official state chroniclers claimed Venice united in patriotic fervor to meet the Ottoman fleet. The shipyard ledgers tell a story of mutiny, wage fraud, and counterfeit silver."
+          </p>
+        </div>
+
+        <!-- Narrative Framing -->
+        <div id="story-framing" class="text-zinc-300">
+          Before a single cannon fired at the Battle of Lepanto, Venice nearly lost the war inside a dusty accounting office overlooking the Grand Canal.
+        </div>
+
+        <!-- Context & Conflict -->
+        <p class="text-zinc-300">
+          In 1570, the Ottoman Empire demanded the immediate surrender of Cyprus. Venice had mere months to deploy an armada of 100 galleys, requiring the Venetian Arsenal—the largest pre-industrial industrial complex on earth—to assemble a warship every 24 hours using moving assembly lines.
+        </p>
+
+        <!-- Locked & Cited Facts -->
+        <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-5 font-sans space-y-3">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase text-emerald-400 tracking-wider">
+            <span>🛡️</span> Locked Fact Layer (Zero Hallucination Guaranteed)
+          </div>
+          <ul class="text-xs text-zinc-300 space-y-2">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>Arsenal Capacity:</strong> Employed up to 16,000 workers at its peak and could assemble a pre-fabricated galley in less than a single day. <a href="https://en.wikipedia.org/wiki/Venetian_Arsenal" target="_blank" class="text-amber-400 underline decoration-amber-400/40 hover:text-amber-300">[Lane, 1934]</a></span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>Pre-Industrial Standardization:</strong> Standardized parts (interchangeable rudders, uniform oar lengths) 200 years prior to Eli Whitney. <a href="https://archive.org/details/historyofvenice00norw" target="_blank" class="text-amber-400 underline decoration-amber-400/40 hover:text-amber-300">[Norwich, History of Venice]</a></span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">•</span>
+              <span><strong>Strike & Crisis:</strong> Shipwrights struck over wage arrears despite the Ottoman threat, forcing the Senate to mint emergency silver coins. <a href="https://www.archiviodistatovenezia.it/" target="_blank" class="text-amber-400 underline decoration-amber-400/40 hover:text-amber-300">[Venetian State Archives]</a></span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Operational Analogy -->
+        <div class="p-4 rounded-xl bg-amber-500/5 border-l-4 border-amber-500 text-zinc-300 text-base italic" id="story-analogy">
+          "Imagine a defense contractor holding a supersonic stealth fighter hostage on the factory runway hours before an invasion because the treasury bounced a payroll check."
+        </div>
+
+        <!-- Counter-Argument Section -->
+        <div class="border-t border-zinc-800 pt-6 space-y-3">
+          <span class="text-xs font-sans uppercase font-bold tracking-wider text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-md">
+            The Other Side of the Ledger
+          </span>
+          <h4 class="text-xl font-bold text-zinc-100 font-display">Did Standardization Kill Venetian Naval Supremacy?</h4>
+          <p class="text-zinc-300 text-base">
+            By standardizing galley hulls so rigidly to fit Venetian shallow lagoon docks and canals, the Republic failed to adopt broadside deep-keel sailing ships until English and Dutch merchants had already captured Mediterranean trade routes in the 17th century.
+          </p>
+          <p class="text-zinc-400 text-sm font-sans italic">
+            <strong>Unresolved debate:</strong> Could Venice have adopted Atlantic galleons without completely abandoning its shallow lagoon sanctuary?
+          </p>
+        </div>
+
+        <!-- What We Can't Prove -->
+        <div class="p-4 rounded-xl bg-zinc-950 border border-zinc-800 font-sans text-xs text-zinc-400 space-y-1">
+          <span class="font-bold text-zinc-300 uppercase tracking-wide">⚖️ What this story can't prove:</span>
+          <p>
+            While French accounts claim King Henry III witnessed a galley built from scratch during his two-hour banquet in 1574, modern engineers agree the ship was 95% pre-assembled and merely rigged as state theater.
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <!-- TAB 3: CONNECTION FINDER -->
+    <section id="section-connections" class="hidden space-y-6">
+      <div class="text-center max-w-xl mx-auto mb-6">
+        <span class="text-xs uppercase tracking-widest text-amber-400 font-semibold">Discovery Sandbox</span>
+        <h2 class="text-3xl font-bold mt-2 text-zinc-100 font-display">The Semantic Connection Finder</h2>
+        <p class="text-zinc-400 text-sm mt-2">Enter any two distant concepts. The graph engine navigates historical, technological, and scientific bridges to find the true rabbit trail between them.</p>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-zinc-400 font-medium mb-1">Concept A</label>
+            <input type="text" id="conn-input-a" value="Cheese" class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 font-medium mb-1">Concept B</label>
+            <input type="text" id="conn-input-b" value="Moon" class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-2.5 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+
+        <button onclick="runConnectionFinder()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
+          ⚡ Discover True Trail
+        </button>
+      </div>
+
+      <!-- Result Trail Visualization -->
+      <div id="trail-results-view" class="space-y-4">
+        <div class="flex items-center justify-between text-xs text-zinc-400">
+          <span id="trail-hop-count" class="font-semibold text-amber-400">Path: 3 Verified Hops</span>
+          <span>BFS Graph Traversal</span>
+        </div>
+
+        <div id="trail-steps-container" class="space-y-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: ANTI-GUILT STREAK & STATS -->
+    <section id="section-streak" class="hidden space-y-6">
+      <div class="text-center max-w-xl mx-auto mb-6">
+        <span class="text-xs uppercase tracking-widest text-emerald-400 font-semibold">Anti-Guilt Philosophy</span>
+        <h2 class="text-3xl font-bold mt-2 text-zinc-100 font-display">Your Curiosity Radius</h2>
+        <p class="text-zinc-400 text-sm mt-2">Missed days pause your streak—they never reset it to zero. Curiosity is an appetite, not a chore.</p>
+      </div>
+
+      <!-- Streak Status Card -->
+      <div class="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-zinc-800">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">
+              🔥
+            </div>
+            <div>
+              <div class="text-3xl font-bold font-display text-zinc-100 flex items-center gap-2">
+                <span id="streak-counter">3 Days</span>
+                <span id="streak-paused-pill" class="text-xs uppercase font-sans font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Active</span>
+              </div>
+              <p id="streak-message" class="text-xs text-zinc-400 mt-1">Active Trail: 3 days unbroken! Keep exploring.</p>
+            </div>
+          </div>
+
+          <!-- Simulation button -->
+          <button onclick="simulateMissedDay()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold rounded-xl text-zinc-300 border border-zinc-700">
+            Simulate 5 Missed Days
+          </button>
+        </div>
+
+        <!-- 4 Key Curiosity Metrics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
+          <div class="bg-zinc-950/60 p-4 rounded-xl border border-zinc-800/80">
+            <span class="text-xs text-zinc-400 block font-medium">Curiosity Radius</span>
+            <span class="text-2xl font-bold text-amber-400 font-display mt-1 block">78%</span>
+            <span class="text-[11px] text-zinc-500">Wide-ranging seeker</span>
+          </div>
+
+          <div class="bg-zinc-950/60 p-4 rounded-xl border border-zinc-800/80">
+            <span class="text-xs text-zinc-400 block font-medium">Longest Rabbit Hole</span>
+            <span class="text-2xl font-bold text-amber-400 font-display mt-1 block">6 Steps</span>
+            <span class="text-[11px] text-zinc-500">Cheese → Moon</span>
+          </div>
+
+          <div class="bg-zinc-950/60 p-4 rounded-xl border border-zinc-800/80">
+            <span class="text-xs text-zinc-400 block font-medium">Counter-Sides Read</span>
+            <span class="text-2xl font-bold text-amber-400 font-display mt-1 block">100%</span>
+            <span class="text-[11px] text-zinc-500">Zero dogma reader</span>
+          </div>
+
+          <div class="bg-zinc-950/60 p-4 rounded-xl border border-zinc-800/80">
+            <span class="text-xs text-zinc-400 block font-medium">Subscription Status</span>
+            <span class="text-2xl font-bold text-emerald-400 font-display mt-1 block">Free Trial</span>
+            <span class="text-[11px] text-zinc-500">5 days remaining (₹49/mo)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Interactive JavaScript Logic -->
+  <script>
+    const ARCHETYPES_DEF = {
+      cartographer: {
+        name: 'The Cartographer',
+        tagline: 'You see the landscape, the systems, and the hubs before the details.',
+        icon: '🗺️',
+        desc: 'You make sense of new domains by first understanding the structural map and geopolitical context before diving into individuals.',
+        traits: ['Structural thinker', 'Loves conceptual maps', 'Context-driven', 'Second-order effects'],
+        hook: 'Look at the lagoon of Venice not as romantic canals, but as a heavily fortified industrial machine with one central engine: the Arsenal.',
+        framing: 'To understand how tiny Venice held off the Ottoman Empire, you have to look at the geographical map of the eastern Mediterranean in 1570.',
+        analogy: 'The Arsenal was the Silicon Valley semiconductor fab of the 16th century: an impenetrable walled compound holding trade secrets and controlling a continent-wide supply chain.'
+      },
+      detective: {
+        name: 'The Detective',
+        tagline: 'You start with the dispute, the contradiction, and the forensic evidence.',
+        icon: '🔍',
+        desc: 'When handed a tidy story, your first instinct is to ask: "Wait, who was arguing against this, and why?" You prefer forensic records over polite myths.',
+        traits: ['Skeptical inquirer', 'Counter-argument collector', 'Rigor over tidy narratives', 'Detects unstated motives'],
+        hook: 'The official state chroniclers claimed Venice united in patriotic fervor to meet the Ottoman fleet. The shipyard ledgers tell a story of mutiny, wage fraud, and counterfeit silver.',
+        framing: 'Before a single cannon fired at the Battle of Lepanto, Venice nearly lost the war inside a dusty accounting office overlooking the Grand Canal.',
+        analogy: 'Imagine a defense contractor holding a supersonic stealth fighter hostage on the factory runway hours before an invasion because the treasury bounced a payroll check.'
+      },
+      archaeologist: {
+        name: 'The Archaeologist',
+        tagline: 'You dig down to the bedrock origins, layer by chronological layer.',
+        icon: '⏳',
+        desc: 'To truly grasp why a modern institution or idea exists, you must dig all the way back to the primordial stratum and physical artifacts.',
+        traits: ['Genealogical thinker', 'Deep historical depth', 'Primary source enthusiast', 'Gradual evolution'],
+        hook: 'Underneath the mud of the Arsenal basin lie numbered oak timbers, stamped with Roman numerals that date back to the early 1300s.',
+        framing: 'Every joint in a Venetian war galley was the result of three centuries of trial-and-error codified into rigid guild handbooks.',
+        analogy: 'Inspecting a 16th-century Venetian galley is like excavating the fossil record of European maritime engineering.'
+      },
+      magpie: {
+        name: 'The Magpie',
+        tagline: 'You hunt for shiny lateral curiosities, brilliant anecdotes, and unexpected parallels.',
+        icon: '✨',
+        desc: 'You believe the most profound truths hide in bizarre side alleys and odd biographical footnotes.',
+        traits: ['Lateral connector', 'Anecdote collector', 'High curiosity radius', 'Cross-pollinator'],
+        hook: 'Did you know that the word "arsenal" comes from the Arabic dar as-sina\'a, and Venice had its own private wine fountain for thirsty shipwrights?',
+        framing: 'History books remember the massive naval clash of Lepanto, but they forget the secret pitch cauldron that almost burnt Venice to the water.',
+        analogy: 'The Arsenal was like a Victorian Willy Wonka factory, if Wonka produced 150-foot war galleys and kept a secret police force in the cellar.'
+      },
+      alchemist: {
+        name: 'The Alchemist',
+        tagline: 'You search for the underlying principles that transform one domain into another.',
+        icon: '⚗️',
+        desc: 'You want invariant mental models: the chemical, economic, or psychological laws that remain true across centuries.',
+        traits: ['Model builder', 'Loves potent analogies', 'First-principles seeker', 'Systems synthesizer'],
+        hook: 'How do you turn raw Alpine oak and Mediterranean hemp into geopolitical hegemony in less than 24 hours? You invent the moving assembly line 350 years before Henry Ford.',
+        framing: 'Venice discovered the ultimate economic law: when material resources are scarce, velocity of assembly beats raw scale.',
+        analogy: 'The Arsenal operated like a modern continuous integration/continuous delivery (CI/CD) software pipeline, turning raw dependencies into deployed military software.'
+      },
+      apprentice: {
+        name: 'The Apprentice',
+        tagline: 'You build from the ground up: clear foundations, pragmatic steps, and tangible craft.',
+        icon: '🧭',
+        desc: 'You appreciate a story that respects the actual labor, tools, and material constraints faced by the protagonist.',
+        traits: ['Grounded builder', 'Values clarity over jargon', 'Appreciates hard constraints', 'Sequential master'],
+        hook: 'Step into the workshop: smell the hot pitch, feel the grain of green oak, and watch how exactly eight men fit an interchangeable rudder in twelve minutes flat.',
+        framing: 'You cannot understand naval strategy from an armchair; you have to understand the physical tolerances of an iron adze carving an oak beam.',
+        analogy: 'Think of assembling a flat-pack Swedish bookshelf, except every bolt is hand-forged bronze and your life depends on it staying watertight in a gale.'
+      }
+    };
+
+    const QUIZ_DATA = [
+      {
+        q: "You arrive in an ancient walled city you've never visited. What is the very first thing you do?",
+        ctx: "Entering unfamiliar territory",
+        opts: [
+          { text: "Climb the highest cathedral spire to view the entire layout and fortifications from above.", arch: 'cartographer' },
+          { text: "Head straight to the courthouse archives to see what the citizens are currently suing each other over.", arch: 'detective' },
+          { text: "Walk down to the oldest foundational aqueducts and basement ruins to touch the earliest masonry.", arch: 'archaeologist' },
+          { text: "Wander the bazaar alleys looking for the weirdest street performer or peculiar apothecary.", arch: 'magpie' }
+        ]
+      },
+      {
+        q: "When reading about a historic conflict or major treaty, which section commands your undivided focus?",
+        ctx: "Investigating turning points",
+        opts: [
+          { text: "The dissenting minority's secret letters arguing that the treaty was a disastrous mistake.", arch: 'detective' },
+          { text: "The structural incentives: wheat prices, trade routes, and naval choke points.", arch: 'cartographer' },
+          { text: "The psychological formula that explains how enemies turned into collaborators.", arch: 'alchemist' },
+          { text: "The exact day-to-day timeline and practical logistics of how the envoys drafted each clause.", arch: 'apprentice' }
+        ]
+      },
+      {
+        q: "How do you prefer complex technical concepts to be explained to you?",
+        ctx: "Mental model absorption",
+        opts: [
+          { text: "Through a vivid, counter-intuitive real-world analogy that makes the mechanism click immediately.", arch: 'alchemist' },
+          { text: "A clean, sequential breakdown starting with zero jargon and building up step-by-step.", arch: 'apprentice' },
+          { text: "Show me the real-world controversy or crisis where this system broke and experts fiercely disagreed.", arch: 'detective' },
+          { text: "Show me the conceptual map: where this fits in the family tree of related ideas.", arch: 'cartographer' }
+        ]
+      },
+      {
+        q: "You fall into an internet rabbit hole at 11:30 PM. What kind of thread keeps you awake until 2:00 AM?",
+        ctx: "Spontaneous curiosity spikes",
+        opts: [
+          { text: "A 40-tweet chain revealing how a bizarre dispute over bird guano reshaped 19th-century naval law.", arch: 'magpie' },
+          { text: "A comprehensive deep dive uncovering the 2,000-year archaeological roots of concrete.", arch: 'archaeologist' },
+          { text: "An investigation comparing why Venice's maritime governance succeeded while Genoa's collapsed.", arch: 'cartographer' },
+          { text: "A master artisan dissecting the physical tolerances and joinery of Japanese pagoda construction.", arch: 'apprentice' }
+        ]
+      },
+      {
+        q: "When a writer presents a seemingly air-tight argument, what is your reflex reaction?",
+        ctx: "Critical evaluation stance",
+        opts: [
+          { text: "Immediately look for the strongest opposing view to test where the argument fractures under pressure.", arch: 'detective' },
+          { text: "Check if the underlying model holds when transferred to a completely unrelated industry or era.", arch: 'alchemist' },
+          { text: "Examine whether their historical citations are cherry-picked or true to primary sources.", arch: 'archaeologist' },
+          { text: "Test whether their thesis actually works in practical, messy day-to-day execution.", arch: 'apprentice' }
+        ]
+      },
+      {
+        q: "What is your relationship with keeping a daily streak in a learning app?",
+        ctx: "Habit psychology",
+        opts: [
+          { text: "I hate streak guilt. If I miss a day because of life, don't punish me—just save where I was and let me resume.", arch: 'detective' },
+          { text: "I want to see the shape of what I learned: a visual map of territories and eras I explored.", arch: 'cartographer' },
+          { text: "I love measuring intellectual range: how far out of my comfort zone my curiosity traveled.", arch: 'alchemist' },
+          { text: "I value depth of understanding: how thoroughly I engaged with the counter-arguments.", arch: 'apprentice' }
+        ]
+      }
+    ];
+
+    let currentQ = 0;
+    let userAnswers = [];
+    let currentArchetype = 'detective';
+
+    function renderQuestion() {
+      if (currentQ >= QUIZ_DATA.length) {
+        showQuizResults();
+        return;
+      }
+      const item = QUIZ_DATA[currentQ];
+      document.getElementById('quiz-context-label').innerText = item.ctx;
+      document.getElementById('quiz-progress-label').innerText = `Question ${currentQ + 1} of ${QUIZ_DATA.length}`;
+      document.getElementById('quiz-question-text').innerText = item.q;
+
+      const optsContainer = document.getElementById('quiz-options-list');
+      optsContainer.innerHTML = '';
+      item.opts.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-4 rounded-xl bg-zinc-950/80 hover:bg-zinc-800/80 border border-zinc-800 hover:border-amber-500/50 transition flex items-center justify-between group";
+        btn.innerHTML = `
+          <span class="text-sm text-zinc-300 group-hover:text-zinc-100">${opt.text}</span>
+          <span class="text-zinc-600 group-hover:text-amber-400 text-xs font-mono">→</span>
+        `;
+        btn.onclick = () => selectOption(opt.arch);
+        optsContainer.appendChild(btn);
+      });
+    }
+
+    function selectOption(arch) {
+      userAnswers.push(arch);
+      currentQ++;
+      renderQuestion();
+    }
+
+    function showQuizResults() {
+      // Find mode of selected archetypes
+      const counts = {};
+      userAnswers.forEach(a => counts[a] = (counts[a] || 0) + 1);
+      let top = 'detective';
+      let max = -1;
+      Object.entries(counts).forEach(([k, v]) => {
+        if (v > max) { max = v; top = k; }
+      });
+      currentArchetype = top;
+
+      document.getElementById('quiz-context-label').parentElement.classList.add('hidden');
+      document.getElementById('quiz-question-text').classList.add('hidden');
+      document.getElementById('quiz-options-list').classList.add('hidden');
+
+      const data = ARCHETYPES_DEF[top];
+      document.getElementById('res-icon').innerText = data.icon;
+      document.getElementById('res-name').innerText = data.name;
+      document.getElementById('res-tagline').innerText = data.tagline;
+      document.getElementById('res-desc').innerText = data.desc;
+
+      const traitsContainer = document.getElementById('res-traits');
+      traitsContainer.innerHTML = '';
+      data.traits.forEach(t => {
+        const span = document.createElement('span');
+        span.className = "text-xs px-3 py-1 bg-zinc-800 text-zinc-300 rounded-full border border-zinc-700";
+        span.innerText = `✦ ${t}`;
+        traitsContainer.appendChild(span);
+      });
+
+      document.getElementById('quiz-result-view').classList.remove('hidden');
+
+      // Update Header badge & Story view
+      document.getElementById('badge-name').innerText = data.name;
+      document.getElementById('active-archetype-badge').classList.remove('hidden');
+      document.getElementById('story-archetype-select').value = top;
+      changeStoryArchetype(top);
+    }
+
+    function shareProfileCard() {
+      navigator.clipboard.writeText(`I got "${ARCHETYPES_DEF[currentArchetype].name}" on Rabbit Trail! 🐇 "${ARCHETYPES_DEF[currentArchetype].tagline}"`);
+      alert("Profile summary copied to clipboard! Ready to share on social.");
+    }
+
+    function changeStoryArchetype(arch) {
+      currentArchetype = arch;
+      const data = ARCHETYPES_DEF[arch];
+      document.getElementById('story-hook').innerText = `"${data.hook}"`;
+      document.getElementById('story-framing').innerText = data.framing;
+      document.getElementById('story-analogy').innerText = `"${data.analogy}"`;
+      document.getElementById('badge-name').innerText = data.name;
+    }
+
+    function switchTab(tabId) {
+      ['quiz', 'story', 'connections', 'streak'].forEach(t => {
+        document.getElementById(`section-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('bg-zinc-800', 'text-amber-400');
+        document.getElementById(`tab-${t}`).classList.add('text-zinc-400');
+      });
+      document.getElementById(`section-${tabId}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabId}`).classList.add('bg-zinc-800', 'text-amber-400');
+      document.getElementById(`tab-${tabId}`).classList.remove('text-zinc-400');
+    }
+
+    // Connection Finder Logic
+    const TRAIL_DATA = [
+      {
+        step: 1,
+        from: "Cheese",
+        to: "Fermentation",
+        rel: "relies on biochemical process",
+        basis: "Early cheese production was humanity's first systematic exploitation of bacterial fermentation to store surplus dairy calories.",
+        cite: "Kindstedt, P. Cheese and Culture: A History of Cheese (2012)"
+      },
+      {
+        step: 2,
+        from: "Fermentation",
+        to: "Lyophilization (Freeze-Drying)",
+        rel: "evolved storage technique into",
+        basis: "As industrialization advanced, bacterial curing was supplemented by high-vacuum freeze-drying to preserve food without refrigeration.",
+        cite: "Fellows, P. Food Processing Technology (2009)"
+      },
+      {
+        step: 3,
+        from: "Freeze-Drying",
+        to: "Apollo 11 Rations",
+        rel: "engineered mission nutrition for",
+        basis: "NASA engineers adapted freeze-drying to develop compressed cubes and pasteurized cheese sandwich spreads for lunar astronauts.",
+        cite: "NASA Technical Report SP-368: Biomedical Results of Apollo"
+      },
+      {
+        step: 4,
+        from: "Apollo 11 Rations",
+        to: "The Moon",
+        rel: "landed astronauts directly onto",
+        basis: "Neil Armstrong and Buzz Aldrin stepped onto Mare Tranquillitatis on July 20, 1969, fueled by freeze-dried mission rations.",
+        cite: "First on the Moon (1970)"
+      }
+    ];
+
+    function runConnectionFinder() {
+      const a = document.getElementById('conn-input-a').value;
+      const b = document.getElementById('conn-input-b').value;
+      const container = document.getElementById('trail-steps-container');
+      container.innerHTML = '';
+
+      TRAIL_DATA.forEach(t => {
+        const card = document.createElement('div');
+        card.className = "bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-2 hover:border-amber-500/40 transition";
+        card.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold text-amber-400">Step ${t.step}: ${t.from} → ${t.to}</span>
+            <span class="text-zinc-500 text-[11px]">${t.rel}</span>
+          </div>
+          <p class="text-xs text-zinc-300">${t.basis}</p>
+          <div class="text-[10px] text-zinc-500 font-mono">Source: ${t.cite}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Streak Simulation
+    let isStreakPaused = false;
+    function simulateMissedDay() {
+      isStreakPaused = !isStreakPaused;
+      const pill = document.getElementById('streak-paused-pill');
+      const msg = document.getElementById('streak-message');
+      if (isStreakPaused) {
+        pill.innerText = "Paused (No Reset!)";
+        pill.className = "text-xs uppercase font-sans font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        msg.innerText = "Streak Paused at 3 days! Zero guilt: your progress is permanently locked until you return.";
+      } else {
+        pill.innerText = "Active";
+        pill.className = "text-xs uppercase font-sans font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+        msg.innerText = "Active Trail: 3 days unbroken! Keep exploring.";
+      }
+    }
+
+    // Initialize default view
+    renderQuestion();
+    runConnectionFinder();
+    switchTab('quiz');
+  </script>
+</body>
+</html>
