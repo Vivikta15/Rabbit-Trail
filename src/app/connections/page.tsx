@@ -1,4 +1,5 @@
 import ConnectionFinder from '../../components/connections/ConnectionFinder';
+import AccessGate from '../../components/subscription/AccessGate';
 import { CONCEPT_NODES } from '../../data/concept-network';
 
 export default function ConnectionsPage() {
@@ -9,7 +10,9 @@ export default function ConnectionsPage() {
       <p className="mb-8 mt-2 text-slate-300">
         Pick any two concepts and follow a sourced chain of links between them.
       </p>
-      <ConnectionFinder suggestions={Object.values(CONCEPT_NODES).map((n) => n.title)} />
+      <AccessGate feature="connections">
+        <ConnectionFinder suggestions={Object.values(CONCEPT_NODES).map((n) => n.title)} />
+      </AccessGate>
     </main>
   );
 }

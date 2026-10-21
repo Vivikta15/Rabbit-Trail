@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { calculateArchetype, QUIZ_SCENARIOS } from '../../data/quiz-questions';
 import { VERIFIED_STORIES } from '../../data/stories';
+import { startTrial } from '../../hooks/use-subscription';
 import { ArchetypeId } from '../../types';
 import ArchetypeCard from './ArchetypeCard';
 
@@ -86,7 +87,10 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
           <li key={option.text}>
             <button
               type="button"
-              onClick={() => setAnswers([...answers, index])}
+              onClick={() => {
+                setAnswers([...answers, index]);
+                if (answers.length + 1 === total) startTrial();
+              }}
               className="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-left hover:border-amber-400 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               {option.text}
