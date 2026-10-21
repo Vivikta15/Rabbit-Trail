@@ -7,12 +7,29 @@ const { renderPersonalizedStory } = require('../dist/lib/llm/rewrite-engine.js')
 
 const story = VERIFIED_STORIES[0];
 
+// Snapshots taken before any render, so a render that edited the story in place cannot also
+// edit the expected values.
+const lockedFacts = structuredClone(story.facts);
+const lockedCounterArgument = structuredClone(story.counterArgument);
+const lockedUnprovable = story.whatWeCantProve;
+
 test('Fact Preservation - locked claims and citations survive every archetype', () => {
   for (const id of Object.keys(ARCHETYPES)) {
     const result = renderPersonalizedStory(story, id);
-    assert.deepEqual(result.facts, story.facts, `facts changed for ${id}`);
+
+    assert.deepEqual(result.facts, lockedFacts, `facts changed in the result for ${id}`);
+    assert.deepEqual(story.facts, lockedFacts, `rendering ${id} mutated the stored facts`);
+    assert.deepEqual(story.counterArgument, lockedCounterArgument, `rendering ${id} mutated the counter-argument`);
+    assert.equal(story.whatWeCantProve, lockedUnprovable, `rendering ${id} mutated the unprovable boundary`);
     assert.ok(result.facts.every((f) => f.sourceUrl && f.sourceTitle), `missing citation for ${id}`);
   }
+});
+
+test('Persona Adaptation - an unknown archetype id falls back to the cartographer presentation', () => {
+  const fallback = renderPersonalizedStory(story, 'not-an-archetype');
+
+  assert.equal(fallback.hook, story.presentationVariants.cartographer.hook);
+  assert.deepEqual(fallback.facts, lockedFacts);
 });
 
 test('Persona Adaptation - detective and cartographer get different hook and framing', () => {

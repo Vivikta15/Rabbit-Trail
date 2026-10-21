@@ -46,6 +46,33 @@ test('Paused Streak - read Day 1, miss Day 2, read Day 3 counts 2, not 1', () =>
   assert.equal(result.isPaused, false);
 });
 
+test('Streak status - reading yesterday waits for today without pausing', () => {
+  const result = calculateStreak(['2026-10-01'], '2026-10-02');
+
+  assert.equal(result.streakDays, 1);
+  assert.equal(result.isPaused, false);
+  assert.match(result.statusMessage, /Ready for today/);
+});
+
+test('Streak status - pauses from the second missed day, keeping the count', () => {
+  const oneMissed = calculateStreak(['2026-10-01', '2026-10-02'], '2026-10-03');
+  assert.equal(oneMissed.isPaused, false, 'a single day not yet read is not a pause');
+
+  const twoMissed = calculateStreak(['2026-10-01', '2026-10-02'], '2026-10-04');
+  assert.equal(twoMissed.isPaused, true);
+  assert.equal(twoMissed.streakDays, 2);
+});
+
+test('Streak status - the active message never claims an unbroken run', () => {
+  const single = calculateStreak(['2026-10-03'], '2026-10-03');
+  assert.match(single.statusMessage, /1 day and counting/);
+
+  // Days 1-2, a week away, then today: three distinct days, but not an unbroken run.
+  const resumed = calculateStreak(['2026-10-01', '2026-10-02', '2026-10-10'], '2026-10-10');
+  assert.match(resumed.statusMessage, /3 days and counting/);
+  assert.doesNotMatch(resumed.statusMessage, /unbroken/i);
+});
+
 test('Paused Streak - a long gap pauses and keeps the count', () => {
   const result = calculateStreak(['2026-10-01', '2026-10-02'], '2026-10-20');
 

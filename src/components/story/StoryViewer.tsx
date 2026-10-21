@@ -56,7 +56,13 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
     setFinished(true);
   }
 
+  // Only the latest request may touch the screen, so a slow earlier response can never replace a
+  // newer one. `shownArchetype` is the style the story on screen was actually written for.
+  const latestRequest = useRef(0);
+  const shownArchetype = useRef(initialArchetypeId);
+
   async function switchArchetype(next: ArchetypeId) {
+    const request = ++latestRequest.current;
     setArchetypeId(next);
     setError(null);
     try {
@@ -64,8 +70,13 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
         `/api/stories/personalized?storyId=${encodeURIComponent(storyId)}&archetype=${encodeURIComponent(next)}`,
       );
       if (!res.ok) throw new Error(String(res.status));
-      setStory(await res.json());
+      const data: PersonalizedStory = await res.json();
+      if (request !== latestRequest.current) return;
+      setStory(data);
+      shownArchetype.current = next;
     } catch {
+      if (request !== latestRequest.current) return;
+      setArchetypeId(shownArchetype.current);
       setError('Could not load that reading style. Please try again.');
     }
   }

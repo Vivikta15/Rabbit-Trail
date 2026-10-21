@@ -50,6 +50,20 @@ test('Unconnected concepts - fallback bridge is flagged unverified and names bot
   assert.match(result.narrative, /Apollo 11 & Space Rations|The Green Cheese Myth/);
 });
 
+test('Unknown terms - Object.prototype names are not concepts', () => {
+  for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    const result = exploreConnection(name, name);
+
+    assert.equal(result.status, 'unknown', `${name} should be unknown`);
+    assert.deepEqual(result.unknownTerms, [name, name]);
+  }
+
+  const mixed = exploreConnection('constructor', 'moon');
+  assert.equal(mixed.status, 'unknown');
+  assert.deepEqual(mixed.unknownTerms, ['constructor']);
+  assert.equal(findConnectionPath('constructor', 'moon'), null);
+});
+
 test('Unknown terms - report which words are not indexed and suggest known concepts', () => {
   const result = exploreConnection('banana', 'moon');
 

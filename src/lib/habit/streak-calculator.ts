@@ -34,7 +34,8 @@ export function calculateStreak(
   if (daysDiff === 0) {
     // Read today
     isPaused = false;
-    statusMessage = `Active Trail: ${streak} day${streak > 1 ? 's' : ''} unbroken!`;
+    // The streak counts reading days, not consecutive ones, so never claim it is unbroken.
+    statusMessage = `Active Trail: ${streak} day${streak > 1 ? 's' : ''} and counting!`;
   } else if (daysDiff === 1) {
     // Read yesterday, pending today's read
     isPaused = false;

@@ -10,7 +10,8 @@ export type ConnectionResult =
 export function resolveConceptKey(input: string): string | null {
   const cleaned = input.trim().toLowerCase().replace(/\s+/g, ' ');
   const asId = cleaned.replace(/ /g, '_');
-  if (CONCEPT_NODES[asId]) return asId;
+  // Own-property check: a plain object also answers to names like "constructor" and "__proto__".
+  if (Object.prototype.hasOwnProperty.call(CONCEPT_NODES, asId)) return asId;
   return Object.keys(CONCEPT_NODES).find((k) => CONCEPT_NODES[k].title.toLowerCase() === cleaned) ?? null;
 }
 
