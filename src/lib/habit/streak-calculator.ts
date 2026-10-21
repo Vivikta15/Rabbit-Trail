@@ -52,6 +52,11 @@ export function calculateStreak(
   };
 }
 
+// Curiosity radius expands with counter-arguments and stories read
+export function curiosityRadius(totalStoriesRead: number, counterArgumentReads: number): number {
+  return Math.min(100, Math.round(totalStoriesRead * 8 + counterArgumentReads * 12));
+}
+
 export function updateCuriosityMetrics(
   currentProfile: UserReadingProfile,
   finishedStoryProps: { readCounterArgument: boolean; rabbitHoleStepsTraversed?: number }
@@ -60,14 +65,11 @@ export function updateCuriosityMetrics(
   const newTotalRead = currentProfile.totalStoriesRead + 1;
   const newLongestHole = Math.max(currentProfile.longestRabbitHole, finishedStoryProps.rabbitHoleStepsTraversed || 0);
 
-  // Curiosity radius expands with counter-arguments and stories read
-  const curiosityRadius = Math.min(100, Math.round((newTotalRead * 8) + (newCounterCount * 12)));
-
   return {
     ...currentProfile,
     totalStoriesRead: newTotalRead,
     counterArgumentReadCount: newCounterCount,
     longestRabbitHole: newLongestHole,
-    curiosityRadius
+    curiosityRadius: curiosityRadius(newTotalRead, newCounterCount)
   };
 }

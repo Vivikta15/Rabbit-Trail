@@ -1,8 +1,10 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Check, Search, Star } from 'lucide-react';
+import { recordActivity } from '../../hooks/use-activity-log';
 import type { ConnectionResult } from '../../lib/graph/pathfinder';
+import { localDateString } from '../../lib/habit/activity-log';
 import PathGraphView from './PathGraphView';
 
 export default function ConnectionFinder({ suggestions }: { suggestions: string[] }) {
@@ -11,6 +13,7 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
   const [result, setResult] = useState<ConnectionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState<string | null>(null);
 
   async function find(first: string, second: string) {
     setLoading(true);
@@ -18,7 +21,18 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
     try {
       const res = await fetch(`/api/connections?a=${encodeURIComponent(first)}&b=${encodeURIComponent(second)}`);
       if (!res.ok) throw new Error(String(res.status));
-      setResult(await res.json());
+      const data: ConnectionResult = await res.json();
+      setResult(data);
+      if (data.status === 'path' && data.trail.hopsCount > 0) {
+        recordActivity({
+          type: 'connection',
+          date: localDateString(),
+          conceptA: data.trail.conceptA,
+          conceptB: data.trail.conceptB,
+          hops: data.trail.hopsCount,
+          domains: data.trail.nodes.map((n) => n.domain),
+        });
+      }
     } catch {
       setResult(null);
       setError('Could not search for a connection. Please try again.');
@@ -70,7 +84,30 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
           </p>
         )}
 
-        {result?.status === 'path' && <PathGraphView trail={result.trail} />}
+        {result?.status === 'path' && (
+          <div className="space-y-4">
+            <PathGraphView trail={result.trail} />
+            {result.trail.hopsCount > 0 && (
+              <button
+                type="button"
+                disabled={savedKey === `${result.trail.conceptA}|${result.trail.conceptB}`}
+                onClick={() => {
+                  recordActivity({
+                    type: 'favorite',
+                    date: localDateString(),
+                    conceptA: result.trail.conceptA,
+                    conceptB: result.trail.conceptB,
+                  });
+                  setSavedKey(`${result.trail.conceptA}|${result.trail.conceptB}`);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                {savedKey === `${result.trail.conceptA}|${result.trail.conceptB}` ? <Check size={16} aria-hidden /> : <Star size={16} aria-hidden />}
+                {savedKey === `${result.trail.conceptA}|${result.trail.conceptB}` ? 'Saved to favorites' : 'Save this connection'}
+              </button>
+            )}
+          </div>
+        )}
 
         {result?.status === 'unconnected' && (
           <div className="rounded-xl border border-dashed border-slate-600 bg-slate-900 p-5">

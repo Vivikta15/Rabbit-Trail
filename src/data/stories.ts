@@ -6,6 +6,8 @@ export const VERIFIED_STORIES: Story[] = [
     date: '2026-10-16',
     title: 'The Great Bottleneck at the Venetian Arsenal',
     protagonist: 'Alvise da Ponte (Chief Naval Commissioner of Venice)',
+    topic: 'Maritime Governance',
+    era: '16th century',
     decisionContext: 'In 1570, the Ottoman Empire demanded the immediate surrender of Cyprus. Venice had mere months to deploy an armada of 100 galleys, requiring the Venetian Arsenal—the largest pre-industrial industrial complex on earth—to assemble a warship every 24 hours using moving assembly lines.',
     facts: [
       {

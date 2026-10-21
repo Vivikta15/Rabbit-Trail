@@ -1,22 +1,60 @@
 'use client';
 
-import { useState } from 'react';
-import { Clock } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Clock } from 'lucide-react';
 import { ARCHETYPES } from '../../data/archetypes';
+import { recordActivity } from '../../hooks/use-activity-log';
+import { localDateString } from '../../lib/habit/activity-log';
 import type { PersonalizedStory } from '../../lib/llm/rewrite-engine';
 import { ArchetypeId } from '../../types';
 import SourceCitations from './SourceCitations';
 
 interface Props {
   storyId: string;
+  topic: string;
+  era: string;
   initialArchetypeId: ArchetypeId;
   initialStory: PersonalizedStory;
 }
 
-export default function StoryViewer({ storyId, initialArchetypeId, initialStory }: Props) {
+export default function StoryViewer({ storyId, topic, era, initialArchetypeId, initialStory }: Props) {
   const [archetypeId, setArchetypeId] = useState(initialArchetypeId);
   const [story, setStory] = useState(initialStory);
   const [error, setError] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
+  const counterRef = useRef<HTMLElement>(null);
+  const counterSeen = useRef(false);
+
+  // The counter-argument counts as explored once it has scrolled into view.
+  useEffect(() => {
+    const check = () => {
+      const el = counterRef.current;
+      if (!el || counterSeen.current) return;
+      const { top, bottom, height } = el.getBoundingClientRect();
+      const visible = Math.min(bottom, window.innerHeight) - Math.max(top, 0);
+      if (visible >= height * 0.6) counterSeen.current = true;
+    };
+    check();
+    window.addEventListener('scroll', check, { passive: true });
+    window.addEventListener('resize', check);
+    return () => {
+      window.removeEventListener('scroll', check);
+      window.removeEventListener('resize', check);
+    };
+  }, []);
+
+  function finishStory() {
+    recordActivity({
+      type: 'story',
+      date: localDateString(),
+      storyId,
+      topic,
+      era,
+      readCounterArgument: counterSeen.current,
+    });
+    setFinished(true);
+  }
 
   async function switchArchetype(next: ArchetypeId) {
     setArchetypeId(next);
@@ -81,7 +119,7 @@ export default function StoryViewer({ storyId, initialArchetypeId, initialStory 
         <p className="text-slate-300">{story.analogy}</p>
       </section>
 
-      <section className="rounded-xl border border-red-900/60 bg-red-950/30 p-5">
+      <section ref={counterRef} className="rounded-xl border border-red-900/60 bg-red-950/30 p-5">
         <h3 className="mb-2 text-lg font-semibold text-red-300">The other side of the ledger</h3>
         <p>
           <strong>Counter-thesis:</strong> {story.counterArgument.thesis}
@@ -98,6 +136,25 @@ export default function StoryViewer({ storyId, initialArchetypeId, initialStory 
         <h3 className="mb-2 text-lg font-semibold">What we can&apos;t prove</h3>
         <p className="text-slate-300">{story.whatWeCantProve}</p>
       </section>
+
+      <footer>
+        {finished ? (
+          <p className="inline-flex items-center gap-2 text-emerald-300">
+            <Check size={16} aria-hidden /> Added to your trail.{' '}
+            <Link href="/dashboard" className="underline">
+              View dashboard
+            </Link>
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={finishStory}
+            className="rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            I&apos;ve finished this story
+          </button>
+        )}
+      </footer>
     </article>
   );
 }

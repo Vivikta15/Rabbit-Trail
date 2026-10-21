@@ -23,6 +23,8 @@ export default function StoryPage({
       <StoryViewer
         key={archetypeId}
         storyId={story.id}
+        topic={story.topic}
+        era={story.era}
         initialArchetypeId={archetypeId}
         initialStory={renderPersonalizedStory(story, archetypeId)}
       />

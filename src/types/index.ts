@@ -55,6 +55,8 @@ export interface Story {
   date: string;
   title: string;
   protagonist: string;
+  topic: string; // Trail Map label
+  era: string; // Trail Map era
   decisionContext: string;
   facts: StoryFact[];
   counterArgument: {
