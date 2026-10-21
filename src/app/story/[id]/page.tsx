@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation';
 import StoryViewer from '../../../components/story/StoryViewer';
 import AccessGate from '../../../components/subscription/AccessGate';
-import { VERIFIED_STORIES } from '../../../data/stories';
 import { renderPersonalizedStory } from '../../../lib/llm/rewrite-engine';
 import { parseSharedArchetype } from '../../../lib/share/archetype-share';
+import { loadCatalog } from '../../../lib/stories/catalog';
+
+export const dynamic = 'force-dynamic';
 
 export default function StoryPage({
   params,
@@ -12,7 +14,7 @@ export default function StoryPage({
   params: { id: string };
   searchParams: { archetype?: string | string[] };
 }) {
-  const story = VERIFIED_STORIES.find((s) => s.id === params.id);
+  const story = loadCatalog().find((s) => s.id === params.id);
   if (!story) notFound();
 
   const requested = Array.isArray(searchParams.archetype) ? searchParams.archetype[0] : searchParams.archetype;

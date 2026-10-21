@@ -48,6 +48,16 @@ export interface StoryFact {
   sourceTitle: string;
   sourceUrl: string;
   isVerified: boolean;
+  // Generated stories carry the verbatim passage the claim was taken from; the pipeline refuses to
+  // publish a fact whose quote is not found in the fetched source.
+  evidenceQuote?: string;
+}
+
+// The encyclopedia page a story is built from. Its outbound links are the rabbit-hole graph.
+export interface StorySource {
+  title: string;
+  url: string;
+  revisionId?: number;
 }
 
 export interface Story {
@@ -57,12 +67,15 @@ export interface Story {
   protagonist: string;
   topic: string; // Trail Map label
   era: string; // Trail Map era
+  source: StorySource;
+  relatedTopics: string[]; // titles this story links onward to, used to follow a reader's trail
   decisionContext: string;
   facts: StoryFact[];
   counterArgument: {
     thesis: string;
     evidence: string;
     unresolvedPoints: string;
+    evidenceQuote?: string; // generated stories: verbatim source passage behind the counter-argument
   };
   whatWeCantProve: string;
   // Archetype-tailored presentation variants

@@ -1,9 +1,8 @@
 import Link from 'next/link';
-import { VERIFIED_STORIES } from '../data/stories';
 
 const LINKS = [
   { href: '/onboarding', label: 'Quiz' },
-  { href: `/story/${VERIFIED_STORIES[0].id}`, label: 'Story' },
+  { href: '/today', label: 'Today' },
   { href: '/connections', label: 'Connections' },
   { href: '/dashboard', label: 'Dashboard' },
 ];

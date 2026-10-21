@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { VERIFIED_STORIES } from '../../../../data/stories';
 import { renderPersonalizedStory } from '../../../../lib/llm/rewrite-engine';
 import { parseSharedArchetype } from '../../../../lib/share/archetype-share';
+import { loadCatalog } from '../../../../lib/stories/catalog';
+
+export const dynamic = 'force-dynamic';
 
 export function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const story = VERIFIED_STORIES.find((s) => s.id === params.get('storyId'));
+  const story = loadCatalog().find((s) => s.id === params.get('storyId'));
   const archetypeId = parseSharedArchetype(params.get('archetype'));
 
   if (!story) {

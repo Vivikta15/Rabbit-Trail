@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { calculateArchetype, QUIZ_SCENARIOS } from '../../data/quiz-questions';
-import { VERIFIED_STORIES } from '../../data/stories';
+import { saveArchetype } from '../../hooks/use-profile';
 import { startTrial } from '../../hooks/use-subscription';
 import { ArchetypeId } from '../../types';
 import ArchetypeCard from './ArchetypeCard';
@@ -36,7 +36,7 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
       <section className="space-y-6">
         <ArchetypeCard archetypeId={topArchetype} />
         <Link
-          href={`/story/${VERIFIED_STORIES[0].id}?archetype=${topArchetype}`}
+          href="/today"
           className="block w-full rounded-lg bg-amber-400 px-4 py-3 text-center font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
         >
           Read today&apos;s story
@@ -89,7 +89,10 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
               type="button"
               onClick={() => {
                 setAnswers([...answers, index]);
-                if (answers.length + 1 === total) startTrial();
+                if (answers.length + 1 === total) {
+                  saveArchetype(calculateArchetype([...answers, index]).topArchetype);
+                  startTrial();
+                }
               }}
               className="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-left hover:border-amber-400 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >

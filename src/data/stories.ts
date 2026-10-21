@@ -1,5 +1,7 @@
 import { Story } from '../types';
 
+// The hand-written seed story. Further stories are generated into content/stories (see the pipeline)
+// and merged with this one by lib/stories/catalog.ts.
 export const VERIFIED_STORIES: Story[] = [
   {
     id: 'story-venice-arsenal-1570',
@@ -8,6 +10,28 @@ export const VERIFIED_STORIES: Story[] = [
     protagonist: 'Alvise da Ponte (Chief Naval Commissioner of Venice)',
     topic: 'Maritime Governance',
     era: '16th century',
+    source: {
+      title: 'Venetian Arsenal',
+      url: 'https://en.wikipedia.org/wiki/Venetian_Arsenal',
+      revisionId: 1378181946
+    },
+    // A story-worthy subset of the page's outbound Wikipedia links (the raw list is mostly identifiers,
+    // lists and minor places).
+    relatedTopics: [
+      'Battle of Lepanto (1571)',
+      'Ottoman–Venetian War (1570–1573)',
+      'Galileo Galilei',
+      'Doge of Venice',
+      'Republic of Venice',
+      'War of the League of Cambrai',
+      'Fourth Crusade',
+      'War of Chioggia',
+      'Bartolomeo Colleoni',
+      'Galleass',
+      'Assembly line',
+      'Mass production',
+      'Fall of the Republic of Venice'
+    ],
     decisionContext: 'In 1570, the Ottoman Empire demanded the immediate surrender of Cyprus. Venice had mere months to deploy an armada of 100 galleys, requiring the Venetian Arsenal—the largest pre-industrial industrial complex on earth—to assemble a warship every 24 hours using moving assembly lines.',
     facts: [
       {
