@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { calculateArchetype, QUIZ_SCENARIOS } from '../../data/quiz-questions';
+import { VERIFIED_STORIES } from '../../data/stories';
 import { ArchetypeId } from '../../types';
 import ArchetypeCard from './ArchetypeCard';
 
@@ -32,6 +34,12 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
     return (
       <section className="space-y-6">
         <ArchetypeCard archetypeId={topArchetype} />
+        <Link
+          href={`/story/${VERIFIED_STORIES[0].id}?archetype=${topArchetype}`}
+          className="block w-full rounded-lg bg-amber-400 px-4 py-3 text-center font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          Read today&apos;s story
+        </Link>
         <button
           type="button"
           onClick={() => setAnswers([])}

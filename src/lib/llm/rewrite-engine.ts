@@ -1,57 +1,51 @@
 import { Story, ArchetypeId } from '../../types';
 import { ARCHETYPES } from '../../data/archetypes';
 
-export function renderPersonalizedStory(story: Story, archetypeId: ArchetypeId): {
+const WORDS_PER_MINUTE = 200;
+
+export interface PersonalizedStory {
   headline: string;
   hook: string;
-  body: string;
-  counterArgumentSection: string;
-  unprovableSection: string;
-  citations: Story['facts'];
-} {
+  framing: string;
+  context: string;
+  pacing: string;
+  analogy: string;
+  facts: Story['facts'];
+  counterArgument: Story['counterArgument'];
+  whatWeCantProve: string;
+  readingMinutes: number;
+}
+
+export function renderPersonalizedStory(story: Story, archetypeId: ArchetypeId): PersonalizedStory {
   const archetype = ARCHETYPES[archetypeId] || ARCHETYPES.cartographer;
   const variant = story.presentationVariants[archetypeId] || story.presentationVariants.cartographer;
 
-  const headline = `${story.title} (${archetype.name} Perspective)`;
-  const hook = variant.hook;
-
-  // Compose body preserving all facts verbatim while wrapping with archetype framing & analogy
-  const body = `
-${variant.introFraming}
-
-${story.decisionContext}
-
-${variant.narrativePacing}
-
----
-
-### Core Factual Foundation
-${story.facts.map((f, i) => `**Fact ${i + 1}:** ${f.claim} *(Source: [${f.sourceTitle}](${f.sourceUrl}))*`).join('\n\n')}
-
-### The Operational Analogy
-${variant.analogy}
-`.trim();
-
-  const counterArgumentSection = `
-### The Other Side of the Ledger
-**Counter-Thesis:** ${story.counterArgument.thesis}
-
-**The Historical Evidence:** ${story.counterArgument.evidence}
-
-**What Remains Contested:** ${story.counterArgument.unresolvedPoints}
-`.trim();
-
-  const unprovableSection = `
-### What the Story Can't Prove
-${story.whatWeCantProve}
-`.trim();
+  // Only the presentation layer varies by archetype; facts, counter-argument and
+  // the unprovable boundary are passed through untouched.
+  const text = [
+    variant.hook,
+    variant.introFraming,
+    story.decisionContext,
+    variant.narrativePacing,
+    ...story.facts.map((f) => f.claim),
+    variant.analogy,
+    story.counterArgument.thesis,
+    story.counterArgument.evidence,
+    story.counterArgument.unresolvedPoints,
+    story.whatWeCantProve,
+  ].join(' ');
+  const words = text.split(/\s+/).filter(Boolean).length;
 
   return {
-    headline,
-    hook,
-    body,
-    counterArgumentSection,
-    unprovableSection,
-    citations: story.facts
+    headline: `${story.title} (${archetype.name} Perspective)`,
+    hook: variant.hook,
+    framing: variant.introFraming,
+    context: story.decisionContext,
+    pacing: variant.narrativePacing,
+    analogy: variant.analogy,
+    facts: story.facts,
+    counterArgument: story.counterArgument,
+    whatWeCantProve: story.whatWeCantProve,
+    readingMinutes: Math.max(1, Math.ceil(words / WORDS_PER_MINUTE)),
   };
 }
