@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "stories:generate": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/generate-stories.js",
     "pretest": "tsc -p tsconfig.lib.json",
     "test": "node --test tests/*.test.js"
   },

@@ -9,5 +9,5 @@
     "incremental": false,
     "outDir": "./dist"
   },
-  "include": ["src/data/**/*", "src/lib/**/*", "src/types/**/*"]
+  "include": ["src/data/**/*", "src/lib/**/*", "src/types/**/*", "src/scripts/**/*"]
 }
