@@ -1,5 +1,5 @@
-import { Story, ArchetypeId } from '../types';
-import { ARCHETYPES } from '../data/archetypes';
+import { Story, ArchetypeId } from '../../types';
+import { ARCHETYPES } from '../../data/archetypes';
 
 export function renderPersonalizedStory(story: Story, archetypeId: ArchetypeId): {
   headline: string;
