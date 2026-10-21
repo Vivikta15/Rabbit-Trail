@@ -5,3 +5,26 @@
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
 }
+
+@keyframes trail-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trail-reveal {
+  opacity: 0;
+  animation: trail-reveal 400ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trail-reveal {
+    opacity: 1;
+    animation: none;
+  }
+}
