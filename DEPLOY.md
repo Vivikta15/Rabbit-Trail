@@ -11,6 +11,10 @@ Nothing here needs you to paste a key into this chat.
 
 ## 0. Before you start
 
+**Windows PowerShell:** if `npm run ...` fails with "running scripts is disabled on this system", type `npm.cmd`
+instead of `npm` (for example `npm.cmd run doctor`). It does the same thing and does not change any security
+setting on your computer.
+
 - Accounts at supabase.com, vercel.com and github.com (the free plans are enough to begin).
 - An Anthropic API key, saved with `npm run setup:key` (see the README).
 - This project in a GitHub repository (step 4 covers pushing it).
