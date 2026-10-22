@@ -206,6 +206,17 @@ test('Generation prompt - gives the model only the source and the quoting rules'
   for (const id of Object.keys(ARCHETYPES)) assert.ok(user.includes(id) || system.includes(id), `missing archetype ${id}`);
 });
 
+test('Generation prompt - tells the model exactly how strict the checker is, so fewer stories are rejected', () => {
+  const { system } = buildGenerationPrompt(page());
+
+  assert.match(system, /fully supported by (its|their) own quote/i);
+  assert.match(system, /every (date|year)[^.]*(must )?appear in that quote/i);
+  assert.match(system, /one to three sentences/i, 'it may quote a longer passage to include the detail it needs');
+  assert.match(system, /do not generali[sz]e/i);
+  assert.match(system, /analogy may compare/i, 'analogies are allowed as comparisons');
+  assert.match(system, /(setup|decisionContext)[^.]*(only|must)[^.]*(facts|claims)/i, 'the setup text may state nothing beyond the facts');
+});
+
 test('Generation - builds a complete unverified story from a valid draft, including fenced JSON', () => {
   const raw = '```json\n' + JSON.stringify(draft()) + '\n```';
   const result = parseGeneratedStory(raw, page(), '2026-10-22');
@@ -301,6 +312,26 @@ test('Verify - the judge must find every claim supported and the variants fact-f
   const r2 = await verifyStory(builtStory(), page(), fakeLlm({ judge: { ...judgeOk(), variantsAddNewFacts: true } }));
   assert.equal(r2.ok, false);
   assert.match(r2.failures.join(' '), /variants/i);
+});
+
+test('Verify - the judge also checks the setup paragraph, and knows analogies are not facts', async () => {
+  const llm = fakeLlm({ judge: judgeOk() });
+  const story = builtStory();
+
+  await verifyStory(story, page(), llm);
+
+  const { system, user } = llm.calls[0];
+  assert.ok(user.includes(story.decisionContext), 'the setup text is shown to readers, so it must be checked too');
+  assert.match(system, /analog(y|ies)[^.]*(not|never)[^.]*fact/i, 'a comparison to something familiar is not a claim about the subject');
+  assert.match(system, /(setup|decisionContext)/i);
+});
+
+test('Verify - setup or variant text that adds facts fails the story, and the message says so', async () => {
+  const result = await verifyStory(builtStory(), page(), fakeLlm({ judge: { ...judgeOk(), variantsAddNewFacts: true } }));
+
+  assert.equal(result.ok, false);
+  assert.match(result.failures.join(' '), /setup/i);
+  assert.match(result.failures.join(' '), /variants/i);
 });
 
 test('Verify - fails closed when the judge answers badly or skips a claim', async () => {
@@ -445,6 +476,19 @@ test('Run - skips a page the model declines, remembers it, and tries the next to
   assert.equal(result.id, 'story-good-page');
   assert.deepEqual(wiki.asked, ['Dull Page', 'Good Page']);
   assert.ok(loadRejected(dir).has('dull page'));
+});
+
+test('Run - reports progress as it goes: each topic tried and why it was skipped', async () => {
+  const dir = seedCatalogDir(['Dull Page', 'Good Page']);
+  const wiki = fakeWiki({ 'Dull Page': page({ title: 'Dull Page', url: 'https://en.wikipedia.org/wiki/Dull_Page' }), 'Good Page': goodPage() });
+  const llm = fakeLlm({ generation: (n) => (n === 1 ? { suitable: false, reason: 'No decision to center on.' } : draft()), judge: judgeOk() });
+  const lines = [];
+
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 5, log: (m) => lines.push(m) });
+
+  assert.equal(result.status, 'published');
+  assert.deepEqual(lines.filter((l) => l.startsWith('Trying')), ['Trying: Dull Page', 'Trying: Good Page']);
+  assert.ok(lines.some((l) => /Dull Page/.test(l) && /declined/.test(l)), 'the reason a topic was skipped is shown as it happens');
 });
 
 test('Run - a story that fails verification is not published and the topic is not blacklisted', async () => {

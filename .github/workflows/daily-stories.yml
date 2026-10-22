@@ -19,7 +19,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       # Set the key for the AI you use: GEMINI_API_KEY (Google) or ANTHROPIC_API_KEY (Claude). The one you do not
       # use stays empty, which counts as not set.

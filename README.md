@@ -97,8 +97,8 @@ story yet, so the catalog grows along the paths readers follow.
    counter-argument.
 2. Every quote must be found in the article (ignoring case, spacing, curly quotes and dash styles), and must be long
    enough to prove something.
-3. A second model call, acting as a strict judge, must find each claim supported by its own quote and the six
-   archetype versions free of new facts.
+3. A second model call, acting as a strict judge, must find each claim supported by its own quote, and the setup
+   paragraph and the six archetype versions free of new facts (an analogy to something familiar is not a fact).
 4. Any failure, error or unusable answer rejects the story. Nothing is written unless all of this passes.
 
 Limits to know about: step 3 is a model (the same one that wrote the story), so it lowers the chance of a wrong

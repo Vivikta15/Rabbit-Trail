@@ -26,6 +26,8 @@ interface RunOptions {
   llm: LlmClient;
   maxAttempts: number;
   maxModelCalls?: number;
+  // Called with a line of progress as the run goes (which topic is being tried, and why one was skipped).
+  log?: (message: string) => void;
 }
 
 const norm = (title: string) => title.trim().toLowerCase();
@@ -85,23 +87,28 @@ export async function generateNextStory(options: RunOptions): Promise<RunResult>
   }
 }
 
-async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModelCalls }: RunOptions): Promise<RunResult> {
+async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModelCalls, log }: RunOptions): Promise<RunResult> {
   const llm = withBudget(rawLlm, maxModelCalls);
   const catalog = await getCatalog(repo);
   const rejected = await repo.loadRejected();
   const triedThisRun = new Set<string>();
   const reasons: string[] = [];
+  const addReason = (reason: string) => {
+    reasons.push(reason);
+    log?.(`  - ${reason}`);
+  };
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const topic = chooseFrontierTopic(catalog, new Set([...rejected, ...triedThisRun]));
     if (!topic) return reasons.length > 0 ? { status: 'failed', reasons } : { status: 'no-topic' };
     triedThisRun.add(norm(topic));
+    log?.(`Trying: ${topic}`);
 
     // Permanent skips are written down so a later run does not pay for the same dead end again.
     const reject = async (reason: string) => {
       await repo.recordRejection(topic, reason, today);
       rejected.add(norm(topic));
-      reasons.push(`${topic}: ${reason}`);
+      addReason(`${topic}: ${reason}`);
     };
 
     try {
@@ -119,13 +126,13 @@ async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModel
       const parsed = parseGeneratedStory(await llm.complete(system, user), page, today);
       if (!parsed.ok) {
         if (parsed.declined) await reject(`the model declined: ${parsed.reason}`);
-        else reasons.push(`${topic}: ${parsed.reason}`); // a bad answer is not the page's fault, so it is retried on a later run
+        else addReason(`${topic}: ${parsed.reason}`); // a bad answer is not the page's fault, so it is retried on a later run
         continue;
       }
 
       const verification = await verifyStory(parsed.story, page, llm);
       if (!verification.ok) {
-        reasons.push(...verification.failures.map((f) => `${topic}: ${f}`));
+        verification.failures.forEach((f) => addReason(`${topic}: ${f}`));
         continue;
       }
 
@@ -139,7 +146,7 @@ async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModel
       // Anything that makes continuing pointless stops the run without blaming the topic. Anything else
       // (a cut-off answer, a story id already taken) only costs this topic.
       if (err instanceof PipelineAbort) return { status: 'aborted', reason: err.message };
-      reasons.push(`${topic}: ${(err as Error).message}`);
+      addReason(`${topic}: ${(err as Error).message}`);
     }
   }
 

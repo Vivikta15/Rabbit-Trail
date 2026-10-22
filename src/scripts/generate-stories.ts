@@ -56,6 +56,7 @@ async function main(): Promise<number> {
       llm,
       maxAttempts: MAX_ATTEMPTS_PER_STORY,
       maxModelCalls: MAX_MODEL_CALLS_PER_STORY,
+      log: (line) => console.log(line),
     });
 
     if (result.status === 'published') {
@@ -69,8 +70,7 @@ async function main(): Promise<number> {
       problem = true;
       break;
     } else {
-      console.error('Could not publish a story this time. Reasons:');
-      result.reasons.forEach((r) => console.error(`  - ${r}`));
+      console.error(`Could not publish a story this time: ${result.reasons.length} problems, listed above.`);
       problem = true;
       break;
     }
