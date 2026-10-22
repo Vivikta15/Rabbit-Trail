@@ -10,50 +10,110 @@ export function storiesDir(): string {
   return process.env.STORIES_DIR || path.join(process.cwd(), 'content', 'stories');
 }
 
+const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 const isString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
 
-// Strict on purpose: these files are written by a pipeline, and a half-formed story must never reach a reader.
-export function isStory(value: unknown): value is Story {
-  if (!value || typeof value !== 'object') return false;
-  const s = value as Record<string, any>;
-
-  if (![s.id, s.date, s.title, s.protagonist, s.topic, s.era, s.decisionContext, s.whatWeCantProve].every(isString)) return false;
-  if (!s.source || !isString(s.source.title) || !isString(s.source.url)) return false;
-  if (!isStringArray(s.relatedTopics)) return false;
-
-  if (!Array.isArray(s.facts) || s.facts.length === 0) return false;
-  if (!s.facts.every((f: any) => f && isString(f.claim) && isString(f.sourceTitle) && isString(f.sourceUrl) && typeof f.isVerified === 'boolean')) return false;
-
-  const c = s.counterArgument;
-  if (!c || !isString(c.thesis) || !isString(c.evidence) || !isString(c.unresolvedPoints)) return false;
-
-  const variants = s.presentationVariants;
-  if (!variants || typeof variants !== 'object') return false;
-  return Object.keys(ARCHETYPES).every((id) => {
-    const v = variants[id];
-    return v && isString(v.hook) && isString(v.narrativePacing) && isString(v.introFraming) && isString(v.analogy);
-  });
+// Links in a story are rendered into pages, so only plain web links are ever allowed (no javascript: or data:).
+function isWebUrl(v: unknown): boolean {
+  if (typeof v !== 'string') return false;
+  try {
+    const protocol = new URL(v).protocol;
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
 }
 
-export function loadGeneratedStories(dir: string = storiesDir()): Story[] {
+// The first thing wrong with a would-be story, in words, or null when it is sound. Strict on purpose: these
+// files are written by a pipeline, and a half-formed story must never reach a reader.
+export function explainStoryProblem(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return 'the story must be a JSON object';
+  const s = value as Record<string, any>;
+
+  if (!isString(s.id) || !SAFE_ID.test(s.id)) return 'id must be lowercase letters, digits and dashes';
+  if (!isString(s.date) || !DATE.test(s.date)) return 'date must look like YYYY-MM-DD';
+  for (const field of ['title', 'protagonist', 'topic', 'era', 'decisionContext', 'whatWeCantProve']) {
+    if (!isString(s[field])) return `${field} must be a non-empty string`;
+  }
+  if (!s.source || !isString(s.source.title)) return 'source.title must be a non-empty string';
+  if (!isWebUrl(s.source.url)) return 'source.url must be an http(s) link';
+  if (!isStringArray(s.relatedTopics)) return 'relatedTopics must be a list of titles';
+
+  if (!Array.isArray(s.facts) || s.facts.length === 0) return 'facts must be a non-empty list';
+  for (const [i, f] of s.facts.entries()) {
+    if (!f || !isString(f.claim)) return `facts[${i}].claim must be a non-empty string`;
+    if (!isString(f.sourceTitle)) return `facts[${i}].sourceTitle must be a non-empty string`;
+    if (!isWebUrl(f.sourceUrl)) return `facts[${i}].sourceUrl must be an http(s) link`;
+    if (typeof f.isVerified !== 'boolean') return `facts[${i}].isVerified must be true or false`;
+  }
+
+  const c = s.counterArgument;
+  for (const field of ['thesis', 'evidence', 'unresolvedPoints']) {
+    if (!c || !isString(c[field])) return `counterArgument.${field} must be a non-empty string`;
+  }
+
+  const variants = s.presentationVariants;
+  if (!variants || typeof variants !== 'object') return 'presentationVariants is missing';
+  for (const id of Object.keys(ARCHETYPES)) {
+    const v = variants[id];
+    if (!v || !isString(v.hook) || !isString(v.narrativePacing) || !isString(v.introFraming) || !isString(v.analogy)) {
+      return `presentationVariants.${id} is missing or incomplete`;
+    }
+  }
+  return null;
+}
+
+export function isStory(value: unknown): value is Story {
+  return explainStoryProblem(value) === null;
+}
+
+export interface StoriesDirReport {
+  valid: Story[];
+  problems: { file: string; reason: string }[];
+}
+
+// Reads every story file and says which are usable and why the others are not. The feed ignores bad files; this
+// is how a person finds out about them.
+export function inspectStoriesDir(dir: string = storiesDir()): StoriesDirReport {
+  const report: StoriesDirReport = { valid: [], problems: [] };
   let files: string[];
   try {
     files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
   } catch {
-    return [];
+    return report;
   }
 
-  const stories: Story[] = [];
+  const firstFileForId = new Map<string, string>();
   for (const file of files) {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
-      if (isStory(parsed)) stories.push(parsed);
+      parsed = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf-8'));
     } catch {
-      // An unreadable or malformed file is skipped; it must not take the whole feed down.
+      report.problems.push({ file, reason: 'not valid JSON (a half-written or damaged file)' });
+      continue;
     }
+    const problem = explainStoryProblem(parsed);
+    if (problem) {
+      report.problems.push({ file, reason: problem });
+      continue;
+    }
+    const story = parsed as Story;
+    const earlier = firstFileForId.get(story.id);
+    if (earlier) {
+      report.problems.push({ file, reason: `duplicate story id "${story.id}" (already defined by ${earlier})` });
+      continue;
+    }
+    firstFileForId.set(story.id, file);
+    report.valid.push(story);
   }
-  return stories;
+  return report;
+}
+
+export function loadGeneratedStories(dir: string = storiesDir()): Story[] {
+  return inspectStoriesDir(dir).valid;
 }
 
 // The seed story first claims its id; a generated file can never shadow it or another story.

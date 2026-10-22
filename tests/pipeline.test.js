@@ -146,7 +146,7 @@ test('Wikipedia - fetchPage follows continuation for long link lists and identif
 test('Wikipedia - a failed request throws a clear error', async () => {
   const fakeFetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
 
-  await assert.rejects(() => fetchPage('X', fakeFetch), /503/);
+  await assert.rejects(() => fetchPage('X', fakeFetch, { retry: { retries: 0 } }), /503/);
 });
 
 // ---- topics ----------------------------------------------------------------------------------

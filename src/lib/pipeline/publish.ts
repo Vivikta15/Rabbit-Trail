@@ -4,8 +4,13 @@ import { Story } from '../../types';
 
 const REJECTED_FILE = 'rejected-topics.jsonl';
 
+const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
+const TEMP_MAX_AGE_MS = 60 * 60 * 1000;
+
+// The id becomes a file name and a URL, so it must never be able to point outside the folder.
 // Written to a temp file and renamed, so a crash can never leave a half-written story for the feed to read.
 export function publishStory(story: Story, dir: string): string {
+  if (!SAFE_ID.test(story.id)) throw new Error(`Unsafe story id "${story.id.slice(0, 60)}": use lowercase letters, digits and dashes only.`);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${story.id}.json`);
   if (fs.existsSync(file)) throw new Error(`Story file already exists: ${file}`);
@@ -14,6 +19,30 @@ export function publishStory(story: Story, dir: string): string {
   fs.writeFileSync(temp, JSON.stringify(story, null, 2), 'utf-8');
   fs.renameSync(temp, file);
   return file;
+}
+
+// A crash between writing and renaming can leave a .tmp file. Only old ones count: a recent one may belong to a
+// run that is still writing.
+export function findStaleTemps(dir: string, now: number = Date.now()): string[] {
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir).filter((n) => n.endsWith('.tmp'));
+  } catch {
+    return [];
+  }
+  return names.filter((name) => {
+    try {
+      return now - fs.statSync(path.join(dir, name)).mtimeMs > TEMP_MAX_AGE_MS;
+    } catch {
+      return false;
+    }
+  });
+}
+
+export function cleanStaleTemps(dir: string, now: number = Date.now()): string[] {
+  const stale = findStaleTemps(dir, now);
+  for (const name of stale) fs.rmSync(path.join(dir, name), { force: true });
+  return stale;
 }
 
 export function recordRejection(dir: string, title: string, reason: string, date: string): void {

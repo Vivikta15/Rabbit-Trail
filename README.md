@@ -26,20 +26,48 @@ story built into `src/data/stories.ts`. `/today` picks each reader's story from 
 
 New stories are written by Claude from a Wikipedia article and published only if they pass a verification gate.
 
-1. Create a file named `.env.local` in the project root (it is gitignored) containing:
+1. Save your Anthropic API key (get one at console.anthropic.com):
 
+   ```bash
+   npm run setup:key
    ```
-   ANTHROPIC_API_KEY=your-key-here
+
+   You paste the key at a hidden prompt. It is checked with Anthropic, then written to `.env.local`, which is
+   gitignored. It is never printed, and the command refuses to run if `.env.local` is not gitignored. See
+   `.env.example` for the other settings (`STORY_MODEL`, `STORIES_DIR`).
+
+2. Check the whole setup:
+
+   ```bash
+   npm run doctor
    ```
 
-   Optional: `STORY_MODEL=<model id>` (default `claude-sonnet-5-5`).
+   It tests Node, the key, the model, Wikipedia, the stories folder, the story files and leftovers from a crashed
+   run, and tells you exactly what to fix.
 
-2. Run it:
+3. Generate:
 
    ```bash
    npm run stories:generate              # one new story
    npm run stories:generate -- --count 3  # up to three
    ```
+
+   It prints how many model calls and tokens it used.
+
+### What protects you when things go wrong
+
+- **Outages and rate limits:** requests to Wikipedia and Anthropic are retried with growing delays and have time
+  limits. A rejected key, an unknown model or a service that stays down stops the run at once with a plain message,
+  and never counts against the topic being tried.
+- **Cost:** each story is capped at 12 model calls, and token usage is reported.
+- **One run at a time:** a lock stops two runs from overlapping. A lock left by a crashed run is taken over
+  automatically.
+- **No half-written stories:** files are written to a temp name and renamed. Leftovers are cleaned up. A story
+  whose id could escape the folder is refused, and a file with a bad shape or a non-web link is ignored by the
+  feed (and listed by `npm run doctor`).
+- **Secrets:** the tests fail if an API key appears in any file git would commit, if a `.env` file would be
+  committed, or if browser code imports the server-side key handling.
+- **Page crashes:** a page that fails to render shows a friendly error page instead of a blank screen.
 
 Each run follows the links of the stories you already have: it picks the page they link to most often that has no
 story yet, so the catalog grows along the paths readers follow.

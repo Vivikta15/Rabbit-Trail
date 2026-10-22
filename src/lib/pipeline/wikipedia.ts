@@ -9,9 +9,17 @@ export interface WikiPage {
 export interface FetchResponseLike {
   ok: boolean;
   status: number;
+  headers?: { get(name: string): string | null };
   json(): Promise<any>;
 }
-export type FetchLike = (url: string, init?: { headers?: Record<string, string> }) => Promise<FetchResponseLike>;
+export type FetchLike = (url: string, init?: { headers?: Record<string, string>; signal?: AbortSignal }) => Promise<FetchResponseLike>;
+
+export interface FetchPageOptions {
+  retry?: RetryOptions;
+  timeoutMs?: number;
+}
+
+import { fetchWithTimeout, HttpStatusError, PipelineAbort, RetryOptions, retryAfterMs, withRetry } from './http';
 
 const API = 'https://en.wikipedia.org/w/api.php';
 const USER_AGENT = 'RabbitTrail/0.1 (daily story pipeline; https://github.com/)';
@@ -37,7 +45,28 @@ export function parseWikiResponse(json: any): WikiPage | null {
   return { title: String(raw.title), url: raw.fullurl, revisionId, text, links: linkTitles(raw) };
 }
 
-export async function fetchPage(title: string, fetchImpl: FetchLike = fetch as unknown as FetchLike): Promise<WikiPage | null> {
+async function requestJson(url: string, fetchImpl: FetchLike, options: FetchPageOptions): Promise<any> {
+  try {
+    const res = await withRetry(async () => {
+      const r = await fetchWithTimeout(fetchImpl, url, { headers: { 'User-Agent': USER_AGENT } }, options.timeoutMs ?? 20000);
+      if (!r.ok) throw new HttpStatusError(`status ${r.status}`, r.status, retryAfterMs(r.headers?.get('retry-after')));
+      return r;
+    }, { retries: 3, baseDelayMs: 1000, maxDelayMs: 15000, ...options.retry });
+    return await res.json();
+  } catch (err) {
+    if (err instanceof HttpStatusError && err.status >= 400 && err.status < 500 && err.status !== 429 && err.status !== 408) {
+      throw new PipelineAbort(`Wikipedia refused the request (${err.status}). The pipeline cannot continue.`);
+    }
+    const detail = err instanceof HttpStatusError ? `${err.status}` : (err as Error).message;
+    throw new PipelineAbort(`Wikipedia is not responding (${detail}). Please try again later.`);
+  }
+}
+
+export async function fetchPage(
+  title: string,
+  fetchImpl: FetchLike = fetch as unknown as FetchLike,
+  options: FetchPageOptions = {},
+): Promise<WikiPage | null> {
   const base: Record<string, string> = {
     action: 'query',
     format: 'json',
@@ -58,9 +87,7 @@ export async function fetchPage(title: string, fetchImpl: FetchLike = fetch as u
 
   for (let i = 0; i < MAX_CONTINUATIONS; i++) {
     const params = new URLSearchParams({ ...base, ...(cont ?? {}) });
-    const res = await fetchImpl(`${API}?${params.toString()}`, { headers: { 'User-Agent': USER_AGENT } });
-    if (!res.ok) throw new Error(`Wikipedia request failed (${res.status})`);
-    const json = await res.json();
+    const json = await requestJson(`${API}?${params.toString()}`, fetchImpl, options);
 
     if (i === 0) {
       page = parseWikiResponse(json);
