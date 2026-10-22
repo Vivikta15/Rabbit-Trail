@@ -198,6 +198,22 @@ test('Supabase: verify checks every table and the lock functions, without taking
   assert.equal(fake.tables.generation_lock.length, 0);
 });
 
+test('Supabase: a function that returns nothing (empty body) is fine, and an unreadable answer is a clear error', async () => {
+  // The real server sends no body for the release function; the fake now does the same. Releasing must work.
+  const { fake, repo } = make();
+  const lock = await repo.acquireLock();
+  await lock.release();
+  assert.equal(fake.tables.generation_lock.length, 0, 'the lock must really have been released');
+
+  const garbled = createSupabaseRepository({
+    url: URL_,
+    serviceKey: KEY,
+    retry: { retries: 0 },
+    fetchImpl: async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => { throw new SyntaxError('x'); }, text: async () => '<html>gateway error</html>' }),
+  });
+  await assert.rejects(() => garbled.list(), (e) => e instanceof PipelineAbort && /could not read/i.test(e.message));
+});
+
 test('Supabase: verify names what is missing when the migration has not been run', async () => {
   const { repo } = make({ missingTables: ['rejected_topics'] });
 

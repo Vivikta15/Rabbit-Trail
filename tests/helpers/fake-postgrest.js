@@ -19,6 +19,18 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } 
     text: async () => JSON.stringify(body),
   });
 
+  // The real server sends NO body at all for a function that returns nothing (and for a minimal insert). Reading
+  // JSON from it throws, exactly as it does against Supabase, so code that forgets this fails in the tests too.
+  const empty = (status) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: () => null },
+    json: async () => {
+      throw new SyntaxError('Unexpected end of JSON input');
+    },
+    text: async () => '',
+  });
+
   function applyQuery(rows, params) {
     let out = [...rows];
     for (const [key, value] of params) {
@@ -74,7 +86,7 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } 
       }
       if (rpc[1] === 'release_generation_lock') {
         if (lock && lock.owner === body.p_owner) tables.generation_lock = [];
-        return json(200, null);
+        return empty(204); // a void function: no body
       }
       return json(404, { code: 'PGRST202', message: 'no such function' });
     }
@@ -94,7 +106,7 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } 
         return json(409, { code: '23505', message: `duplicate key value violates unique constraint "${table}_pkey"` });
       }
       tables[table].push({ ...body, ...(key ? {} : { id: tables[table].length + 1 }) });
-      return json(201, null);
+      return empty(201); // Prefer: return=minimal: no body
     }
     return json(405, { message: 'method not allowed' });
   }

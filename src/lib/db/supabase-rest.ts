@@ -82,7 +82,17 @@ export function createSupabaseRest({ url, serviceKey, fetchImpl, retry, timeoutM
       }
       throw new PipelineAbort(`Could not reach Supabase (${(err as Error).message}). Check SUPABASE_URL and your connection, then try again later.`);
     }
-    return wantBody ? res.json() : undefined;
+    if (!wantBody) return undefined;
+
+    // A function that returns nothing (like releasing the lock) comes back with no body at all: that is "no
+    // value", not an error. Anything else must be valid JSON.
+    const text = await res.text();
+    if (text.trim() === '') return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new PipelineAbort('Supabase sent an answer this app could not read. Please try again later.');
+    }
   }
 
   const client: SupabaseRest = {
