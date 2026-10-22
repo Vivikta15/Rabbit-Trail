@@ -65,10 +65,14 @@ async function main(): Promise<number> {
   return 0;
 }
 
+// Setting exitCode (instead of calling process.exit) lets the terminal handle close normally. process.exit while
+// the keyboard handle is closing makes Node on Windows print "Assertion failed ... UV_HANDLE_CLOSING".
 main().then(
-  (code) => process.exit(code),
+  (code) => {
+    process.exitCode = code;
+  },
   (err) => {
     console.error((err as Error).message);
-    process.exit(1);
+    process.exitCode = 1;
   },
 );
