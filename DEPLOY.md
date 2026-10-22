@@ -4,7 +4,7 @@ How it fits together:
 
 - **Vercel** serves the website.
 - **Supabase** (Postgres) holds the stories, the topics already tried, a run lock and a log of generation runs.
-- **A GitHub Action** writes one new story a day. It, not the website, holds the Anthropic key.
+- **A GitHub Action** writes one new story a day. It, not the website, holds the AI key (Google Gemini or Anthropic Claude, your choice).
 
 You do five things in your own accounts. Each step ends with a check, so you know it worked before moving on.
 Nothing here needs you to paste a key into this chat.
@@ -16,7 +16,8 @@ instead of `npm` (for example `npm.cmd run doctor`). It does the same thing and 
 setting on your computer.
 
 - Accounts at supabase.com, vercel.com and github.com (the free plans are enough to begin).
-- An Anthropic API key, saved with `npm run setup:key` (see the README).
+- An AI key, saved with `npm run setup:gemini` (Google Gemini, from aistudio.google.com/apikey) or
+  `npm run setup:key` (Anthropic Claude). Pick one; see the README.
 - This project in a GitHub repository (step 4 covers pushing it).
 
 ## 1. Create the Supabase project
@@ -63,11 +64,14 @@ quote their source wrongly, but a model can still misjudge, so check a few befor
 ## 4. Put the code on GitHub and set the schedule
 
 1. Create a GitHub repository and push this project to it.
-2. In the repository: **Settings -> Secrets and variables -> Actions -> New repository secret**. Add three
-   secrets, with exactly these names:
-   - `ANTHROPIC_API_KEY`
+2. In the repository: **Settings -> Secrets and variables -> Actions**. On the **Secrets** tab add, with exactly
+   these names:
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - your AI key: `GEMINI_API_KEY` (Google) **or** `ANTHROPIC_API_KEY` (Claude)
+
+   Then on the **Variables** tab add one variable, `LLM_PROVIDER`, with the value `gemini` or `anthropic`, matching
+   the key you added.
 3. Open the **Actions** tab, choose **Daily story**, and click **Run workflow** once.
 
 **Check:** the run goes green and a new row appears in `stories`. From then on it runs every day at 03:17 UTC
@@ -81,7 +85,7 @@ attention, and GitHub emails you. The run's log says what.
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
 
-   Do **not** add the Anthropic key here: the website never writes stories, so it does not need it. Do **not**
+   Do **not** add the AI key here: the website never writes stories, so it does not need it. Do **not**
    prefix any of these with `NEXT_PUBLIC_`: that would send the key to every visitor's browser.
 3. Click **Deploy**.
 
@@ -93,10 +97,13 @@ settings refuses to run on purpose, rather than quietly showing a single story.
 
 | Setting | Where it lives | Used by |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | your `.env.local`, GitHub secret | writing stories (not the website) |
+| `GEMINI_API_KEY` | your `.env.local`, GitHub secret | writing stories with Google Gemini (not the website) |
+| `ANTHROPIC_API_KEY` | your `.env.local`, GitHub secret | writing stories with Claude instead (not the website) |
+| `LLM_PROVIDER` | your `.env.local` (set for you), GitHub variable | which of the two writes stories: `gemini` or `anthropic` |
+| `GEMINI_MODEL` (optional) | `.env.local`, GitHub variable | which Gemini model (default `gemini-3.8-flash`) |
 | `SUPABASE_URL` | `.env.local`, GitHub secret, Vercel | everything that reads or writes stories |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
-| `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model writes stories |
+| `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model (default `claude-sonnet-5-5`) |
 | `STORIES_DIR` (optional) | `.env.local` | folder for local story files; ignored once Supabase is set |
 | `REQUIRE_SUPABASE` (optional) | set to `1` by the daily workflow | makes a run refuse to write to local files, so stories can only ever go to Supabase |
 
@@ -111,12 +118,15 @@ Run `npm run doctor`. It tests each piece and prints the fix. The usual causes:
 | `This is a Vercel deployment but Supabase is not configured` | Add the two Supabase variables in Vercel and redeploy. |
 | `Another story run is already in progress` | Two runs overlapped. The lock frees itself after 30 minutes if a run crashed. |
 | `Anthropic rejected the API key` | Run `npm run setup:key`, then update the GitHub secret. |
+| `Google rejected the Gemini API key` | Run `npm run setup:gemini`, then update the GitHub secret. Also check the Gemini API is enabled for the key's Google project. |
+| `Gemini says the rate or daily quota is used up` | The free tier's limit. Wait (daily quotas reset at midnight Pacific time), set `GEMINI_MODEL` to another model, or enable billing in Google AI Studio. |
+| `Both an Anthropic and a Gemini key are set` | Set `LLM_PROVIDER` to `gemini` or `anthropic` (the setup commands do this for you). |
 | A red **Daily story** run | Open the run's log: it states the reason (an outage, a spent call budget, a rejected key). |
 
 ## Changing a key
 
-Change it in each place it lives (the table above). Old keys keep working until you revoke them in the Anthropic
-or Supabase console, so revoke the old one after the new one is in place.
+Change it in each place it lives (the table above). Old keys keep working until you revoke them in the Gemini (Google AI Studio),
+Anthropic or Supabase console, so revoke the old one after the new one is in place.
 
 ## Not covered yet
 

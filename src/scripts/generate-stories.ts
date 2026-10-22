@@ -1,8 +1,8 @@
 // Generates new verified stories into the configured store. Run with `npm run stories:generate`.
 import { chooseBackend } from '../lib/config/backend';
-import { loadConfig } from '../lib/config/env';
+import { loadLlmConfig, PROVIDER_LABEL } from '../lib/config/provider';
 import { localDateString } from '../lib/habit/activity-log';
-import { createAnthropicClient } from '../lib/pipeline/llm-client';
+import { createLlmClient } from '../lib/pipeline/llm-factory';
 import { generateNextStory } from '../lib/pipeline/run';
 import { fetchPage } from '../lib/pipeline/wikipedia';
 import { createRepository } from '../lib/stories/get-repository';
@@ -20,7 +20,7 @@ function parseCount(args: string[]): number {
 
 async function main(): Promise<number> {
   const cwd = process.cwd();
-  const config = loadConfig(process.env, cwd);
+  const config = loadLlmConfig(process.env);
   const backend = chooseBackend(process.env, cwd);
 
   const problems = [...(config.ok ? [] : config.problems), ...(backend.kind === 'error' ? backend.problems : [])];
@@ -31,9 +31,9 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const { apiKey, model } = config.config;
+  const { provider, model } = config.config;
   const repo = createRepository(backend);
-  const llm = createAnthropicClient({ apiKey, model });
+  const llm = createLlmClient(config.config);
 
   // Fail before spending anything if the store is not ready (missing tables, bad key, unwritable folder).
   try {
@@ -46,7 +46,7 @@ async function main(): Promise<number> {
   const count = parseCount(process.argv.slice(2));
   let published = 0;
   let problem = false; // an outage or a run that could not produce a story, as opposed to "nothing left to do"
-  console.log(`Writing to ${repo.describe()} using ${model}`);
+  console.log(`Writing to ${repo.describe()} using ${PROVIDER_LABEL[provider]}, model ${model}`);
 
   for (let i = 0; i < count; i++) {
     const result = await generateNextStory({

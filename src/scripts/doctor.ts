@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { formatReport, hasFailures, runDoctor } from '../lib/doctor/checks';
 import { lockState } from '../lib/pipeline/lock';
-import { createAnthropicClient } from '../lib/pipeline/llm-client';
+import { createLlmClient } from '../lib/pipeline/llm-factory';
 import { findStaleTemps } from '../lib/pipeline/publish';
 import { fetchPage } from '../lib/pipeline/wikipedia';
 import { createRepository } from '../lib/stories/get-repository';
@@ -22,9 +22,10 @@ async function main(): Promise<number> {
       if (!page) throw new Error('Wikipedia answered, but without the expected page.');
     },
 
-    // One tiny request (16 tokens) proves the key is accepted and the model exists.
-    async pingAnthropic({ apiKey, model }) {
-      const client = createAnthropicClient({ apiKey, model, maxTokens: 16, timeoutMs: 30000, retry: { retries: 1, baseDelayMs: 1000 } });
+    // One tiny request proves the key is accepted and the model exists. (A small token limit keeps it cheap; Gemini
+    // needs a little more room than Claude because its hidden thinking counts against the limit.)
+    async pingLlm(config) {
+      const client = createLlmClient(config, { maxTokens: config.provider === 'gemini' ? 512 : 16, timeoutMs: 30000, retry: { retries: 1, baseDelayMs: 1000 } });
       await client.complete('Reply with the single word OK.', 'ping');
     },
 
@@ -37,9 +38,11 @@ async function main(): Promise<number> {
 }
 
 main().then(
-  (code) => process.exit(code),
+  (code) => {
+    process.exitCode = code;
+  },
   (err) => {
     console.error(`The check itself failed: ${(err as Error).message}`);
-    process.exit(1);
+    process.exitCode = 1;
   },
 );

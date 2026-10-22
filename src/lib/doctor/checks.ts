@@ -1,5 +1,6 @@
 import { BackendChoice, chooseBackend, describeServiceKey } from '../config/backend';
-import { DEFAULT_MODEL, describeKey, KEY_NAME, validateApiKey } from '../config/env';
+import { describeKey } from '../config/env';
+import { describeGeminiKey, LlmConfig, loadLlmConfig, PROVIDER_LABEL } from '../config/provider';
 import { StoryRepository } from '../stories/repository';
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'skip';
@@ -18,13 +19,13 @@ export interface DoctorDeps {
   cwd: string;
   envFileExists: boolean;
   pingWikipedia(): Promise<void>;
-  pingAnthropic(config: { apiKey: string; model: string }): Promise<void>;
+  pingLlm(config: LlmConfig): Promise<void>;
   openRepository(choice: Exclude<BackendChoice, { kind: 'error' }>): StoryRepository;
   // Only meaningful for local files: Supabase keeps its lock in the database.
   fileHousekeeping(dir: string): { lock: 'none' | 'held' | 'stale'; staleTemps: string[] };
 }
 
-const SETUP_KEY_FIX = 'Run "npm run setup:key" and paste your key at the hidden prompt.';
+const SETUP_AI_FIX = 'Run "npm run setup:gemini" (Google Gemini) or "npm run setup:key" (Anthropic Claude) and paste your key at the hidden prompt.';
 const SUPABASE_FIX = 'See DEPLOY.md, step 1: create the Supabase project, then set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.';
 const MIN_NODE_MAJOR = 22;
 
@@ -35,7 +36,7 @@ function redact(text: string, secrets: string[]): string {
 export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
   const add = (r: CheckResult) => results.push(r);
-  const rawKey = deps.env[KEY_NAME];
+  const anyAiKey = deps.env.ANTHROPIC_API_KEY || deps.env.GEMINI_API_KEY;
 
   const major = Number(deps.nodeVersion.split('.')[0]);
   add(
@@ -47,35 +48,33 @@ export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
   add(
     deps.envFileExists
       ? { name: 'Settings file', status: 'pass', detail: '.env.local found' }
-      : rawKey
+      : anyAiKey
         ? { name: 'Settings file', status: 'pass', detail: 'no .env.local, but the settings come from the environment' }
-        : { name: 'Settings file', status: 'warn', detail: '.env.local not found', fix: SETUP_KEY_FIX },
+        : { name: 'Settings file', status: 'warn', detail: '.env.local not found', fix: SETUP_AI_FIX },
   );
 
-  const key = validateApiKey(rawKey);
-  add(
-    key.ok
-      ? { name: 'API key', status: 'pass', detail: `present (${describeKey(key.key)})` }
-      : { name: 'API key', status: 'fail', detail: key.problem, fix: SETUP_KEY_FIX },
-  );
-
-  const model = (deps.env.STORY_MODEL ?? '').trim() || DEFAULT_MODEL;
-  const modelOk = /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model);
-  add(
-    modelOk
-      ? { name: 'Model', status: 'pass', detail: deps.env.STORY_MODEL ? model : `${model} (default)` }
-      : { name: 'Model', status: 'fail', detail: `"${model}" is not a valid model id`, fix: `Remove STORY_MODEL from .env.local to use ${DEFAULT_MODEL}.` },
-  );
-
-  if (key.ok && modelOk) {
+  // ---- the AI service that writes the stories ----
+  const llm = loadLlmConfig(deps.env);
+  if (llm.ok) {
+    const { provider, apiKey, model } = llm.config;
+    const shown = provider === 'gemini' ? describeGeminiKey(apiKey) : describeKey(apiKey);
+    add({ name: 'AI key', status: 'pass', detail: `${PROVIDER_LABEL[provider]}, key ${shown}` });
+    add({ name: 'AI model', status: 'pass', detail: model });
     try {
-      await deps.pingAnthropic({ apiKey: key.key, model });
-      add({ name: 'Anthropic connection', status: 'pass', detail: `key accepted and ${model} answered` });
+      await deps.pingLlm(llm.config);
+      add({ name: 'AI connection', status: 'pass', detail: `key accepted and ${model} answered` });
     } catch (err) {
-      add({ name: 'Anthropic connection', status: 'fail', detail: redact((err as Error).message, [key.key]), fix: 'Check the key at console.anthropic.com, then run "npm run setup:key" again.' });
+      add({
+        name: 'AI connection',
+        status: 'fail',
+        detail: redact((err as Error).message, [apiKey]),
+        fix: provider === 'gemini' ? 'Check the key at aistudio.google.com/apikey, then run "npm run setup:gemini" again.' : 'Check the key at console.anthropic.com, then run "npm run setup:key" again.',
+      });
     }
   } else {
-    add({ name: 'Anthropic connection', status: 'skip', detail: 'not tried until the key and model above are fixed' });
+    add({ name: 'AI key', status: 'fail', detail: llm.problems.join(' '), fix: SETUP_AI_FIX });
+    add({ name: 'AI model', status: 'skip', detail: 'not checked until the key above is fixed' });
+    add({ name: 'AI connection', status: 'skip', detail: 'not tried until the key above is fixed' });
   }
 
   try {

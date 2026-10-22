@@ -49,10 +49,17 @@ test('Workflow - runs daily and on demand, never overlaps, and cannot be abused 
 test('Workflow - gets its keys only from GitHub secrets and documents each one', () => {
   const used = new Set([...workflow.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1]));
 
-  assert.deepEqual([...used].sort(), ['ANTHROPIC_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL']);
+  // Both AI keys are wired (you set the one you use; the other stays empty), plus the two Supabase ones.
+  assert.deepEqual([...used].sort(), ['ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL']);
   for (const name of used) assert.ok(deploy.includes(name), `DEPLOY.md does not tell you to add the ${name} secret`);
-  assert.doesNotMatch(workflow, /sk-ant-|sb_secret_/);
+  assert.doesNotMatch(workflow, /sk-ant-|sb_secret_|AIza/);
   assert.doesNotMatch(workflow, /echo[^\n]*secrets\./i, 'a secret must never be echoed into the log');
+});
+
+test('Workflow - the AI provider is a plain repository variable, documented, and passed to the job', () => {
+  assert.match(workflow, /LLM_PROVIDER:\s*\$\{\{\s*vars\.LLM_PROVIDER\s*\}\}/);
+  assert.match(deploy, /LLM_PROVIDER/);
+  assert.match(deploy, /Variables/);
 });
 
 test('Workflow - refuses to write to the runner disk, installs from the lockfile, and checks setup before generating', () => {

@@ -1,8 +1,7 @@
 name: Daily story
 
 # Writes one new verified story to Supabase every day. It runs here, not on Vercel, because it takes a minute or
-# two (longer than a serverless function may run) and so that the Anthropic key lives only in GitHub, never on the
-# website. A red run means something needs attention, and GitHub emails the repository owner.
+# two (longer than a serverless function may run) and so that the AI key lives only in GitHub, never on the website. A red run means something needs attention, and GitHub emails the repository owner.
 
 on:
   schedule:
@@ -22,7 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
+      # Set the key for the AI you use: GEMINI_API_KEY (Google) or ANTHROPIC_API_KEY (Claude). The one you do not
+      # use stays empty, which counts as not set.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # "gemini" or "anthropic". A repository variable (Settings -> Secrets and variables -> Actions -> Variables).
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # Refuse to run on this runner's throwaway disk: stories must go to Supabase or nowhere.

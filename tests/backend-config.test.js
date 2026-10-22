@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { validateApiKey, describeKey, upsertEnvLine, readEnvValue, loadConfig } = require('../dist/lib/config/env.js');
+const { validateApiKey, describeKey, upsertEnvLine, readEnvValue } = require('../dist/lib/config/env.js');
 
 // Built by concatenation so no real-looking key ever appears as one literal in the repo.
 const fakeKey = (tail = 'A'.repeat(40)) => 'sk-ant-' + 'api03-' + tail;
@@ -80,29 +80,4 @@ test('Env file - readEnvValue finds the active value and ignores comments', () =
   assert.equal(readEnvValue(content, 'ANTHROPIC_API_KEY'), 'real');
   assert.equal(readEnvValue('# only=comment\n', 'only'), undefined);
   assert.equal(readEnvValue('', 'X'), undefined);
-});
-
-test('Config - loads a complete, valid environment with sensible defaults', () => {
-  const result = loadConfig({ ANTHROPIC_API_KEY: fakeKey() }, '/work');
-
-  assert.equal(result.ok, true);
-  assert.equal(result.config.model, 'claude-sonnet-5-5');
-  assert.match(result.config.storiesDir.replace(/\\/g, '/'), /\/work\/content\/stories$/);
-});
-
-test('Config - reports every problem at once, each with what to do', () => {
-  const result = loadConfig({ STORY_MODEL: 'bad model!' }, '/work');
-
-  assert.equal(result.ok, false);
-  assert.equal(result.problems.length, 2);
-  assert.match(result.problems.join('\n'), /ANTHROPIC_API_KEY/);
-  assert.match(result.problems.join('\n'), /STORY_MODEL/);
-});
-
-test('Config - STORIES_DIR and STORY_MODEL overrides are honoured', () => {
-  const result = loadConfig({ ANTHROPIC_API_KEY: fakeKey(), STORY_MODEL: 'claude-opus-5-5', STORIES_DIR: '/elsewhere' }, '/work');
-
-  assert.equal(result.ok, true);
-  assert.equal(result.config.model, 'claude-opus-5-5');
-  assert.equal(result.config.storiesDir, '/elsewhere');
 });

@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 export const KEY_NAME = 'ANTHROPIC_API_KEY';
 export const DEFAULT_MODEL = 'claude-sonnet-5-5';
 
@@ -73,31 +71,4 @@ export function readEnvValue(content: string, name: string): string | undefined 
     if (match) found = match[1].trim().replace(/^(["'])(.*)\1$/, '$2');
   }
   return found;
-}
-
-export interface AppConfig {
-  apiKey: string;
-  model: string;
-  storiesDir: string;
-}
-
-export type ConfigResult = { ok: true; config: AppConfig } | { ok: false; problems: string[] };
-
-// Collects every problem in one pass so the reader fixes them together instead of one run at a time.
-export function loadConfig(env: Record<string, string | undefined>, cwd: string): ConfigResult {
-  const problems: string[] = [];
-
-  const key = validateApiKey(env[KEY_NAME]);
-  if (!key.ok) problems.push(key.problem);
-
-  const model = (env.STORY_MODEL ?? '').trim() || DEFAULT_MODEL;
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(model)) {
-    problems.push(`STORY_MODEL "${model}" is not a valid model id. Remove it to use ${DEFAULT_MODEL}.`);
-  }
-
-  if (problems.length > 0 || !key.ok) return { ok: false, problems };
-  return {
-    ok: true,
-    config: { apiKey: key.key, model, storiesDir: env.STORIES_DIR || path.join(cwd, 'content', 'stories') },
-  };
 }

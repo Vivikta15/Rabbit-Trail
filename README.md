@@ -32,17 +32,20 @@ story from the catalog:
 
 ### Generating new stories
 
-New stories are written by Claude from a Wikipedia article and published only if they pass a verification gate.
+New stories are written by an AI (Google Gemini or Anthropic Claude, your choice) from a Wikipedia article and
+published only if they pass a verification gate.
 
-1. Save your Anthropic API key (get one at console.anthropic.com):
+1. Save an AI key. Pick one:
 
    ```bash
-   npm run setup:key
+   npm run setup:gemini    # Google Gemini: get a key at aistudio.google.com/apikey
+   npm run setup:key       # Anthropic Claude: get a key at console.anthropic.com
    ```
 
-   You paste the key at a hidden prompt. It is checked with Anthropic, then written to `.env.local`, which is
-   gitignored. It is never printed, and the command refuses to run if `.env.local` is not gitignored. See
-   `.env.example` for the other settings (`STORY_MODEL`, `STORIES_DIR`).
+   You paste the key at a hidden prompt. It is checked with the provider, then written to `.env.local`, which is
+   gitignored, and that provider becomes the one used for stories. The key is never printed, and the command
+   refuses to run if `.env.local` is not gitignored. See `.env.example` for the other settings (`GEMINI_MODEL`,
+   `STORY_MODEL`, `LLM_PROVIDER`, `STORIES_DIR`). If both keys are set, `LLM_PROVIDER` must say which to use.
 
 2. For the website, save your Supabase settings (details in DEPLOY.md):
 
@@ -56,7 +59,7 @@ New stories are written by Claude from a Wikipedia article and published only if
    npm run doctor
    ```
 
-   It tests Node, both keys, the model, Wikipedia, where stories are stored (and that the tables exist), the
+   It tests Node, the AI key and model, Wikipedia, where stories are stored (and that the tables exist), the
    stored stories and leftovers from a crashed run, and tells you exactly what to fix.
 
 4. Generate:
@@ -98,7 +101,8 @@ story yet, so the catalog grows along the paths readers follow.
    archetype versions free of new facts.
 4. Any failure, error or unusable answer rejects the story. Nothing is written unless all of this passes.
 
-Limits to know about: step 3 is a model, so it lowers the chance of a wrong claim rather than removing it. Read a
+Limits to know about: step 3 is a model (the same one that wrote the story), so it lowers the chance of a wrong
+claim rather than removing it. Read a
 few published stories yourself before relying on this unattended. Pages the model declines (no person and
 decision to centre on), missing pages and disambiguation pages are remembered in
 `content/stories/rejected-topics.jsonl` so later runs do not pay for them again.

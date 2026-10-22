@@ -29,7 +29,7 @@ function deps(over = {}) {
     cwd: '/work',
     envFileExists: true,
     pingWikipedia: async () => {},
-    pingAnthropic: async () => {},
+    pingLlm: async () => {},
     openRepository: () => fakeRepo(),
     fileHousekeeping: () => ({ lock: 'none', staleTemps: [] }),
     ...over,
@@ -57,6 +57,54 @@ test('Doctor - never prints either key, only the last four characters of each', 
   assert.match(text, /wxyz/);
 });
 
+// ---- the AI provider ---------------------------------------------------------------------------------------------
+
+const gemKey = () => 'AIza' + 'Sy' + 'G'.repeat(29) + 'wxyz';
+const geminiEnv = (over = {}) => ({ GEMINI_API_KEY: gemKey(), SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey(), ...over });
+
+test('Doctor - a Gemini setup passes, names the provider and model, and shows only the last four key characters', async () => {
+  const pinged = [];
+  const results = await runDoctor(deps({ env: geminiEnv(), pingLlm: async (config) => { pinged.push(config); } }));
+
+  assert.equal(hasFailures(results), false);
+  assert.match(byName(results, 'AI key').detail, /Gemini/);
+  assert.match(byName(results, 'AI model').detail, /gemini-3\.8-flash/);
+  assert.equal(pinged[0].provider, 'gemini');
+  assert.equal(pinged[0].apiKey, gemKey());
+  const text = formatReport(results);
+  assert.equal(text.includes(gemKey()), false);
+  assert.equal(text.includes('GGGGGGGG'), false);
+  assert.match(text, /wxyz/);
+});
+
+test('Doctor - a Gemini failure (quota, model, key) is reported with Google\'s explanation, key redacted', async () => {
+  const results = await runDoctor(deps({ env: geminiEnv(), pingLlm: async () => { throw new Error(`Gemini says the rate or daily quota is used up (429). key=${gemKey()}`); } }));
+  const r = byName(results, 'AI connection');
+
+  assert.equal(r.status, 'fail');
+  assert.match(r.detail, /429/);
+  assert.equal(JSON.stringify(results).includes(gemKey()), false);
+});
+
+test('Doctor - two AI keys with no LLM_PROVIDER is a failure that says how to choose', async () => {
+  const results = await runDoctor(deps({ env: geminiEnv({ ANTHROPIC_API_KEY: fakeKey() }) }));
+
+  assert.equal(byName(results, 'AI key').status, 'fail');
+  assert.match(byName(results, 'AI key').detail, /LLM_PROVIDER/);
+  assert.equal(byName(results, 'AI connection').status, 'skip');
+
+  const chosen = await runDoctor(deps({ env: geminiEnv({ ANTHROPIC_API_KEY: fakeKey(), LLM_PROVIDER: 'gemini' }) }));
+  assert.equal(hasFailures(chosen), false);
+});
+
+test('Doctor - no AI key at all names both ways to set one up', async () => {
+  const r = byName(await runDoctor(deps({ env: { SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey() } })), 'AI key');
+
+  assert.equal(r.status, 'fail');
+  assert.match(r.fix, /setup:gemini/);
+  assert.match(r.fix, /setup:key/);
+});
+
 test('Doctor - an old Node fails with what to install', async () => {
   const r = byName(await runDoctor(deps({ nodeVersion: '18.19.0' })), 'Node version');
 
@@ -66,26 +114,26 @@ test('Doctor - an old Node fails with what to install', async () => {
 
 test('Doctor - a missing Anthropic key fails with the setup command, and the live check is skipped, not run', async () => {
   let pinged = false;
-  const results = await runDoctor(deps({ env: { SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey() }, envFileExists: false, pingAnthropic: async () => { pinged = true; } }));
+  const results = await runDoctor(deps({ env: { SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey() }, envFileExists: false, pingLlm: async () => { pinged = true; } }));
 
-  assert.equal(byName(results, 'API key').status, 'fail');
-  assert.match(byName(results, 'API key').fix, /setup:key/);
-  assert.equal(byName(results, 'Anthropic connection').status, 'skip');
+  assert.equal(byName(results, 'AI key').status, 'fail');
+  assert.match(byName(results, 'AI key').fix, /setup:key/);
+  assert.equal(byName(results, 'AI connection').status, 'skip');
   assert.equal(pinged, false, 'no network call with a key that is known to be bad');
 });
 
 test('Doctor - a malformed Anthropic key is explained without echoing it', async () => {
   const results = await runDoctor(deps({ env: { ANTHROPIC_API_KEY: 'sk-ant-' + 'tooshort', SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey() } }));
 
-  assert.match(byName(results, 'API key').detail, /incomplete|too short/i);
+  assert.match(byName(results, 'AI key').detail, /incomplete|too short/i);
   assert.equal(JSON.stringify(results).includes('tooshort'), false);
 });
 
 test('Doctor - a rejected Anthropic key is reported with the service message', async () => {
-  const results = await runDoctor(deps({ pingAnthropic: async () => { throw new Error('Anthropic rejected the API key (401). Run "npm run setup:key" to enter a working key.'); } }));
+  const results = await runDoctor(deps({ pingLlm: async () => { throw new Error('Anthropic rejected the API key (401). Run "npm run setup:key" to enter a working key.'); } }));
 
-  assert.equal(byName(results, 'Anthropic connection').status, 'fail');
-  assert.match(byName(results, 'Anthropic connection').detail, /401/);
+  assert.equal(byName(results, 'AI connection').status, 'fail');
+  assert.match(byName(results, 'AI connection').detail, /401/);
   assert.equal(hasFailures(results), true);
 });
 
@@ -203,9 +251,10 @@ test('Doctor - one failing check never stops the others from running', async () 
 test('Doctor - the report lists each check with a clear status and the fix underneath', async () => {
   const text = formatReport(await runDoctor(deps({ env: { SUPABASE_URL: SB_URL, SUPABASE_SERVICE_ROLE_KEY: sbKey() }, envFileExists: false })));
 
-  assert.match(text, /\[FAIL\] API key/);
+  assert.match(text, /\[FAIL\] AI key/);
   assert.match(text, /\[ok\] Node version/);
-  assert.match(text, /\[skip\] Anthropic connection/);
+  assert.match(text, /\[skip\] AI connection/);
+  assert.match(text, /Fix: .*setup:gemini/);
   assert.match(text, /Fix: .*setup:key/);
 });
 
