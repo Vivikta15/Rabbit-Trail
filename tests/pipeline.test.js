@@ -270,6 +270,28 @@ test('Generation - malformed or incomplete output is rejected, never repaired', 
   }
 });
 
+test('Generation - an incomplete draft names exactly what is missing', () => {
+  const cases = [
+    [draft({ topic: '' }), /topic/],
+    [draft({ era: undefined }), /era/],
+    [draft({ title: '   ' }), /title/],
+    [draft({ protagonist: undefined }), /protagonist/],
+    [draft({ decisionContext: '' }), /decisionContext/],
+    [draft({ whatWeCantProve: '' }), /whatWeCantProve/],
+    [draft({ counterArgument: { ...draft().counterArgument, thesis: '' } }), /counterArgument\.thesis/],
+    [draft({ presentationVariants: Object.fromEntries(Object.entries(variants()).filter(([k]) => k !== 'magpie')) }), /magpie/],
+    [draft({ presentationVariants: { ...variants(), alchemist: { hook: 'h', narrativePacing: 'p', introFraming: 'f' } } }), /alchemist/],
+  ];
+
+  for (const [d, pattern] of cases) {
+    const result = parseGeneratedStory(JSON.stringify(d), page(), '2026-10-22');
+
+    assert.equal(result.ok, false, String(pattern));
+    assert.match(result.reason, /incomplete/i);
+    assert.match(result.reason, pattern, `the reason should name ${pattern}: "${result.reason}"`);
+  }
+});
+
 // ---- verification ----------------------------------------------------------------------------
 
 test('Verify - normalization ignores case, whitespace, curly quotes and dash styles', () => {

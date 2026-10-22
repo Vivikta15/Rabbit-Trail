@@ -1,6 +1,6 @@
 import { ARCHETYPES } from '../../data/archetypes';
 import { Story } from '../../types';
-import { isStory } from '../stories/catalog';
+import { explainStoryProblem } from '../stories/catalog';
 import { rankTopicsByMention } from './topics';
 import { WikiPage } from './wikipedia';
 
@@ -118,6 +118,8 @@ export function parseGeneratedStory(raw: string, page: WikiPage, today: string):
     presentationVariants: variants,
   };
 
-  if (!isStory(story)) return { ok: false, reason: 'the story is missing required fields or an archetype variant' };
-  return { ok: true, story };
+  // Name the first thing wrong, so an incomplete draft can be understood and the prompt improved.
+  const problem = explainStoryProblem(story);
+  if (problem) return { ok: false, reason: `the story is incomplete: ${problem}` };
+  return { ok: true, story: story as Story };
 }
