@@ -3,18 +3,19 @@ import StoryViewer from '../../../components/story/StoryViewer';
 import AccessGate from '../../../components/subscription/AccessGate';
 import { renderPersonalizedStory } from '../../../lib/llm/rewrite-engine';
 import { parseSharedArchetype } from '../../../lib/share/archetype-share';
-import { loadCatalog } from '../../../lib/stories/catalog';
+import { getStoryById } from '../../../lib/stories/catalog';
+import { getRepository } from '../../../lib/stories/get-repository';
 
 export const dynamic = 'force-dynamic';
 
-export default function StoryPage({
+export default async function StoryPage({
   params,
   searchParams,
 }: {
   params: { id: string };
   searchParams: { archetype?: string | string[] };
 }) {
-  const story = loadCatalog().find((s) => s.id === params.id);
+  const story = await getStoryById(getRepository(), params.id);
   if (!story) notFound();
 
   const requested = Array.isArray(searchParams.archetype) ? searchParams.archetype[0] : searchParams.archetype;

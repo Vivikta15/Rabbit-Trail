@@ -2,13 +2,18 @@
   "name": "rabbit-trail",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "setup:key": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/setup-key.js",
-    "doctor": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/doctor.js",
-    "stories:generate":"tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/generate-stories.js",
+    "setup:supabase": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/setup-supabase.js",
+    "doctor":"tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/doctor.js",
+    "stories:generate": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/generate-stories.js",
+    "db:import": "tsc -p tsconfig.lib.json && node --env-file-if-exists=.env.local dist/scripts/import-stories.js",
     "pretest": "tsc -p tsconfig.lib.json",
     "test": "node --test tests/*.test.js"
   },
@@ -19,6 +24,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

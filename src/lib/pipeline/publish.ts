@@ -1,19 +1,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Story } from '../../types';
+import { StoryExistsError } from '../stories/repository';
+import { assertSafeStoryId } from '../stories/story-id';
 
 const REJECTED_FILE = 'rejected-topics.jsonl';
 
-const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
 const TEMP_MAX_AGE_MS = 60 * 60 * 1000;
 
-// The id becomes a file name and a URL, so it must never be able to point outside the folder.
+// The id becomes a file name, so it must never be able to point outside the folder.
 // Written to a temp file and renamed, so a crash can never leave a half-written story for the feed to read.
 export function publishStory(story: Story, dir: string): string {
-  if (!SAFE_ID.test(story.id)) throw new Error(`Unsafe story id "${story.id.slice(0, 60)}": use lowercase letters, digits and dashes only.`);
+  assertSafeStoryId(story.id);
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${story.id}.json`);
-  if (fs.existsSync(file)) throw new Error(`Story file already exists: ${file}`);
+  if (fs.existsSync(file)) throw new StoryExistsError(`Story file already exists: ${file}`);
 
   const temp = `${file}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(story, null, 2), 'utf-8');

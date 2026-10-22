@@ -7,6 +7,7 @@ const path = require('node:path');
 const { acquireLock } = require('../dist/lib/pipeline/lock.js');
 const { PipelineAbort } = require('../dist/lib/pipeline/http.js');
 const { publishStory, cleanStaleTemps } = require('../dist/lib/pipeline/publish.js');
+const { createFileRepository } = require('../dist/lib/stories/file-repository.js');
 const { generateNextStory } = require('../dist/lib/pipeline/run.js');
 const { explainStoryProblem, isStory, inspectStoriesDir, loadCatalog } = require('../dist/lib/stories/catalog.js');
 const { cleanParam } = require('../dist/lib/api/validate.js');
@@ -114,12 +115,12 @@ test('Run - refuses to start while another run holds the lock, and releases the 
   const wiki = { fetchPage: async () => null };
   const llm = { complete: async () => '{}' };
 
-  const blocked = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 1 });
+  const blocked = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 1 });
   assert.equal(blocked.status, 'aborted');
   assert.match(blocked.reason, /already in progress/i);
 
   held.release();
-  const ran = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 1 });
+  const ran = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 1 });
   assert.notEqual(ran.status, 'aborted');
   assert.equal(fs.existsSync(lockFile(dir)), false, 'the lock must be released after a normal run');
 });
@@ -128,7 +129,7 @@ test('Run - releases the lock even when the run blows up unexpectedly', async ()
   const dir = tempDir();
   const wiki = { fetchPage: async () => { throw new PipelineAbort('boom'); } };
 
-  await generateNextStory({ dir, today: '2026-10-22', wiki, llm: { complete: async () => '{}' }, maxAttempts: 1 });
+  await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm: { complete: async () => '{}' }, maxAttempts: 1 });
 
   assert.equal(fs.existsSync(lockFile(dir)), false);
 });

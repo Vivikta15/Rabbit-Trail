@@ -15,6 +15,7 @@ const {
 } = require('../dist/lib/pipeline/http.js');
 const { createAnthropicClient } = require('../dist/lib/pipeline/llm-client.js');
 const { fetchPage } = require('../dist/lib/pipeline/wikipedia.js');
+const { createFileRepository } = require('../dist/lib/stories/file-repository.js');
 const { generateNextStory } = require('../dist/lib/pipeline/run.js');
 const { loadRejected } = require('../dist/lib/pipeline/publish.js');
 const { loadCatalog } = require('../dist/lib/stories/catalog.js');
@@ -284,7 +285,7 @@ test('Run - an outage aborts the run without blaming the topic', async () => {
   const dir = dirWith(['Good Page', 'Other Page']);
   const llm = { async complete() { throw new PipelineAbort('Anthropic is busy right now. Please try again later.'); } };
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: wikiOf({ 'Good Page': goodPage() }), llm, maxAttempts: 5 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: wikiOf({ 'Good Page': goodPage() }), llm, maxAttempts: 5 });
 
   assert.equal(result.status, 'aborted');
   assert.match(result.reason, /try again later/i);
@@ -295,7 +296,7 @@ test('Run - a wikipedia outage aborts the run too', async () => {
   const dir = dirWith(['Good Page']);
   const wiki = { fetchPage: async () => { throw new PipelineAbort('Wikipedia is unreachable. Please try again later.'); } };
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm: { async complete() { return '{}'; } }, maxAttempts: 3 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm: { async complete() { return '{}'; } }, maxAttempts: 3 });
 
   assert.equal(result.status, 'aborted');
 });
@@ -313,7 +314,7 @@ test('Run - one bad answer or surprise error on a topic moves on to the next top
     },
   };
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 5 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 5 });
 
   assert.equal(result.status, 'published');
   assert.equal(result.id, 'story-better-page');
@@ -327,7 +328,7 @@ test('Run - a story id that already exists on disk is skipped, not a crash', asy
   const pages = { 'Good Page': goodPage(), 'Better Page': { ...goodPage(), title: 'Better Page', url: 'https://en.wikipedia.org/wiki/Better_Page' } };
   const llm = { async complete(system, user) { return JSON.stringify(/CLAIMS TO CHECK/.test(user) ? judgeOk : draft()); } };
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 5 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 5 });
 
   assert.equal(result.status, 'published');
   assert.equal(result.id, 'story-better-page');
@@ -340,7 +341,7 @@ test('Run - stops when the model-call budget is spent, so a bad day cannot run u
   let calls = 0;
   const llm = { async complete() { calls += 1; return JSON.stringify({ suitable: false, reason: 'no' }); } };
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 10, maxModelCalls: 2 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: wikiOf(pages), llm, maxAttempts: 10, maxModelCalls: 2 });
 
   assert.equal(calls, 2);
   assert.equal(result.status, 'aborted');
@@ -350,7 +351,7 @@ test('Run - stops when the model-call budget is spent, so a bad day cannot run u
 test('Run - never leaves a half-written story behind when publishing fails midway', async () => {
   const dir = dirWith(['Good Page']);
   const llm = { async complete(system, user) { return JSON.stringify(/CLAIMS TO CHECK/.test(user) ? judgeOk : draft()); } };
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: wikiOf({ 'Good Page': goodPage() }), llm, maxAttempts: 1 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: wikiOf({ 'Good Page': goodPage() }), llm, maxAttempts: 1 });
 
   assert.equal(result.status, 'published');
   assert.deepEqual(fs.readdirSync(dir).filter((f) => f.endsWith('.tmp')), []);

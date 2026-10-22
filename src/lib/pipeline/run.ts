@@ -1,10 +1,9 @@
 import { Story } from '../../types';
-import { loadCatalog } from '../stories/catalog';
+import { getCatalog } from '../stories/catalog';
+import { StoryRepository } from '../stories/repository';
 import { parseGeneratedStory, buildGenerationPrompt } from './generate';
 import { PipelineAbort } from './http';
 import { LlmClient } from './llm-client';
-import { acquireLock } from './lock';
-import { cleanStaleTemps, loadRejected, publishStory, recordRejection } from './publish';
 import { chooseFrontierTopic } from './topics';
 import { verifyStory } from './verify';
 import { WikiPage } from './wikipedia';
@@ -14,14 +13,14 @@ export interface WikiSource {
 }
 
 export type RunResult =
-  | { status: 'published'; id: string; title: string; path: string }
+  | { status: 'published'; id: string; title: string }
   | { status: 'no-topic' }
   | { status: 'failed'; reasons: string[] }
   // The run was stopped on purpose (bad key, outage, spent budget). Nothing was blamed on any topic.
   | { status: 'aborted'; reason: string };
 
 interface RunOptions {
-  dir: string;
+  repo: StoryRepository;
   today: string;
   wiki: WikiSource;
   llm: LlmClient;
@@ -48,27 +47,48 @@ function withBudget(llm: LlmClient, maxModelCalls: number | undefined): LlmClien
 
 // Produces at most one new verified story: follows the catalog's links to the best uncovered topic, has the
 // model write it from the page, and publishes only if the verification gate passes. Only one run may write to
-// the folder at a time; the lock is always released, however the run ends.
+// the store at a time; the lock is always released, however the run ends.
 export async function generateNextStory(options: RunOptions): Promise<RunResult> {
+  const { repo } = options;
   let lock;
   try {
-    lock = acquireLock(options.dir);
+    lock = await repo.acquireLock();
   } catch (err) {
     if (err instanceof PipelineAbort) return { status: 'aborted', reason: err.message };
     throw err;
   }
+
+  const startedAt = new Date().toISOString();
   try {
-    cleanStaleTemps(options.dir);
-    return await runLocked(options);
+    await repo.housekeeping();
+    const result = await runLocked(options);
+
+    // The log is for people; a failure to write it must never turn a good run into a failed one.
+    try {
+      await repo.recordRun({
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        status: result.status,
+        publishedId: result.status === 'published' ? result.id : null,
+        details: {
+          ...(result.status === 'failed' ? { reasons: result.reasons } : {}),
+          ...(result.status === 'aborted' ? { reason: result.reason } : {}),
+          ...(options.llm.usage ? { usage: options.llm.usage() } : {}),
+        },
+      });
+    } catch {
+      // ignored on purpose
+    }
+    return result;
   } finally {
-    lock.release();
+    await lock.release();
   }
 }
 
-async function runLocked({ dir, today, wiki, llm: rawLlm, maxAttempts, maxModelCalls }: RunOptions): Promise<RunResult> {
+async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModelCalls }: RunOptions): Promise<RunResult> {
   const llm = withBudget(rawLlm, maxModelCalls);
-  const catalog = loadCatalog(dir);
-  const rejected = loadRejected(dir);
+  const catalog = await getCatalog(repo);
+  const rejected = await repo.loadRejected();
   const triedThisRun = new Set<string>();
   const reasons: string[] = [];
 
@@ -78,8 +98,8 @@ async function runLocked({ dir, today, wiki, llm: rawLlm, maxAttempts, maxModelC
     triedThisRun.add(norm(topic));
 
     // Permanent skips are written down so a later run does not pay for the same dead end again.
-    const reject = (reason: string) => {
-      recordRejection(dir, topic, reason, today);
+    const reject = async (reason: string) => {
+      await repo.recordRejection(topic, reason, today);
       rejected.add(norm(topic));
       reasons.push(`${topic}: ${reason}`);
     };
@@ -87,18 +107,18 @@ async function runLocked({ dir, today, wiki, llm: rawLlm, maxAttempts, maxModelC
     try {
       const page = await wiki.fetchPage(topic);
       if (!page) {
-        reject('page not found or is a disambiguation page');
+        await reject('page not found or is a disambiguation page');
         continue;
       }
       if (catalog.some((s) => norm(s.source.title) === norm(page.title))) {
-        reject(`redirects to "${page.title}", which already has a story`);
+        await reject(`redirects to "${page.title}", which already has a story`);
         continue;
       }
 
       const { system, user } = buildGenerationPrompt(page);
       const parsed = parseGeneratedStory(await llm.complete(system, user), page, today);
       if (!parsed.ok) {
-        if (parsed.declined) reject(`the model declined: ${parsed.reason}`);
+        if (parsed.declined) await reject(`the model declined: ${parsed.reason}`);
         else reasons.push(`${topic}: ${parsed.reason}`); // a bad answer is not the page's fault, so it is retried on a later run
         continue;
       }
@@ -110,14 +130,14 @@ async function runLocked({ dir, today, wiki, llm: rawLlm, maxAttempts, maxModelC
       }
 
       const verified: Story = { ...parsed.story, facts: parsed.story.facts.map((f) => ({ ...f, isVerified: true })) };
-      const file = publishStory(verified, dir);
+      await repo.save(verified);
       // A link like "Battle of Lepanto (1571)" can resolve to "Battle of Lepanto"; remember the alias so the
       // next run does not ask for the same page again.
-      if (norm(topic) !== norm(page.title)) recordRejection(dir, topic, `redirects to "${page.title}" (published)`, today);
-      return { status: 'published', id: verified.id, title: verified.title, path: file };
+      if (norm(topic) !== norm(page.title)) await repo.recordRejection(topic, `redirects to "${page.title}" (published)`, today);
+      return { status: 'published', id: verified.id, title: verified.title };
     } catch (err) {
       // Anything that makes continuing pointless stops the run without blaming the topic. Anything else
-      // (a cut-off answer, a file that is in the way) only costs this topic.
+      // (a cut-off answer, a story id already taken) only costs this topic.
       if (err instanceof PipelineAbort) return { status: 'aborted', reason: err.message };
       reasons.push(`${topic}: ${(err as Error).message}`);
     }

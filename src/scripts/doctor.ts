@@ -6,7 +6,7 @@ import { lockState } from '../lib/pipeline/lock';
 import { createAnthropicClient } from '../lib/pipeline/llm-client';
 import { findStaleTemps } from '../lib/pipeline/publish';
 import { fetchPage } from '../lib/pipeline/wikipedia';
-import { inspectStoriesDir } from '../lib/stories/catalog';
+import { createRepository } from '../lib/stories/get-repository';
 
 async function main(): Promise<number> {
   const cwd = process.cwd();
@@ -28,15 +28,8 @@ async function main(): Promise<number> {
       await client.complete('Reply with the single word OK.', 'ping');
     },
 
-    inspectDir: (dir) => inspectStoriesDir(dir),
-    ensureWritable(dir) {
-      fs.mkdirSync(dir, { recursive: true });
-      const probe = path.join(dir, `.write-test-${process.pid}`);
-      fs.writeFileSync(probe, 'ok');
-      fs.rmSync(probe, { force: true });
-    },
-    lockState: (dir) => lockState(dir),
-    staleTempFiles: (dir) => findStaleTemps(dir),
+    openRepository: (choice) => createRepository(choice),
+    fileHousekeeping: (dir) => ({ lock: lockState(dir), staleTemps: findStaleTemps(dir) }),
   });
 
   console.log(formatReport(results));

@@ -1,9 +1,11 @@
-// Generates new verified stories into content/stories. Run with `npm run stories:generate`.
+// Generates new verified stories into the configured store. Run with `npm run stories:generate`.
+import { chooseBackend } from '../lib/config/backend';
 import { loadConfig } from '../lib/config/env';
 import { localDateString } from '../lib/habit/activity-log';
 import { createAnthropicClient } from '../lib/pipeline/llm-client';
 import { generateNextStory } from '../lib/pipeline/run';
 import { fetchPage } from '../lib/pipeline/wikipedia';
+import { createRepository } from '../lib/stories/get-repository';
 
 const MAX_COUNT = 10;
 const MAX_ATTEMPTS_PER_STORY = 5;
@@ -17,23 +19,38 @@ function parseCount(args: string[]): number {
 }
 
 async function main(): Promise<number> {
-  const loaded = loadConfig(process.env, process.cwd());
-  if (!loaded.ok) {
+  const cwd = process.cwd();
+  const config = loadConfig(process.env, cwd);
+  const backend = chooseBackend(process.env, cwd);
+
+  const problems = [...(config.ok ? [] : config.problems), ...(backend.kind === 'error' ? backend.problems : [])];
+  if (!config.ok || backend.kind === 'error' || problems.length > 0) {
     console.error('Cannot start:');
-    loaded.problems.forEach((p) => console.error(`  - ${p}`));
+    problems.forEach((p) => console.error(`  - ${p}`));
     console.error('Run "npm run doctor" to see the whole setup.');
     return 1;
   }
-  const { apiKey, model, storiesDir } = loaded.config;
+
+  const { apiKey, model } = config.config;
+  const repo = createRepository(backend);
   const llm = createAnthropicClient({ apiKey, model });
+
+  // Fail before spending anything if the store is not ready (missing tables, bad key, unwritable folder).
+  try {
+    await repo.verify();
+  } catch (err) {
+    console.error(`Cannot start: ${(err as Error).message}`);
+    return 1;
+  }
 
   const count = parseCount(process.argv.slice(2));
   let published = 0;
-  console.log(`Writing to ${storiesDir} using ${model}`);
+  let problem = false; // an outage or a run that could not produce a story, as opposed to "nothing left to do"
+  console.log(`Writing to ${repo.describe()} using ${model}`);
 
   for (let i = 0; i < count; i++) {
     const result = await generateNextStory({
-      dir: storiesDir,
+      repo,
       today: localDateString(),
       wiki: { fetchPage: (title) => fetchPage(title) },
       llm,
@@ -49,10 +66,12 @@ async function main(): Promise<number> {
       break;
     } else if (result.status === 'aborted') {
       console.error(`Stopped: ${result.reason}`);
+      problem = true;
       break;
     } else {
       console.error('Could not publish a story this time. Reasons:');
       result.reasons.forEach((r) => console.error(`  - ${r}`));
+      problem = true;
       break;
     }
   }
@@ -60,7 +79,10 @@ async function main(): Promise<number> {
   const usage = llm.usage?.();
   if (usage) console.log(`Model usage: ${usage.calls} calls, ${usage.inputTokens} input and ${usage.outputTokens} output tokens.`);
   console.log(`Done: ${published} new ${published === 1 ? 'story' : 'stories'}.`);
-  return published > 0 ? 0 : 1;
+
+  // A scheduled run is marked failed (and the owner notified) only when something went wrong. Having nothing
+  // left to write is not a failure.
+  return problem ? 1 : 0;
 }
 
 main().then(

@@ -19,17 +19,28 @@ function committableFiles() {
 const files = committableFiles();
 const skip = files === null ? 'not a git checkout' : false;
 
-test('Secrets - no file that would be committed contains an Anthropic API key', { skip }, () => {
-  const keyLike = /sk-ant-[A-Za-z0-9_-]{20,}/;
+// Anthropic keys, Supabase secret keys, and Supabase's older JWT-style keys (the service_role key is one).
+const KEY_PATTERNS = [/sk-ant-[A-Za-z0-9_-]{20,}/, /sb_secret_[A-Za-z0-9_-]{20,}/, /eyJ[A-Za-z0-9_-]{15,}\.eyJ[A-Za-z0-9_-]{15,}\.[A-Za-z0-9_-]{15,}/];
+
+test('Secrets - no file that would be committed contains an Anthropic or Supabase key', { skip }, () => {
   const offenders = files.filter((f) => {
     try {
-      return keyLike.test(fs.readFileSync(path.join(root, f), 'utf-8'));
+      const text = fs.readFileSync(path.join(root, f), 'utf-8');
+      return KEY_PATTERNS.some((p) => p.test(text));
     } catch {
       return false; // deleted, or a binary that cannot be read as text
     }
   });
 
-  assert.deepEqual(offenders, [], `an API key appears in: ${offenders.join(', ')}`);
+  assert.deepEqual(offenders, [], `a key appears in: ${offenders.join(', ')}`);
+});
+
+test('Secrets - the key patterns really do match keys, so the scan above cannot pass by accident', () => {
+  assert.ok(KEY_PATTERNS[0].test('sk-ant-' + 'A'.repeat(30)));
+  assert.ok(KEY_PATTERNS[1].test('sb_secret_' + 'A'.repeat(30)));
+  const part = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  assert.ok(KEY_PATTERNS[2].test(`${part({ alg: 'HS256', typ: 'JWT' })}.${part({ role: 'service_role', iss: 'supabase' })}.${'x'.repeat(30)}`));
+  assert.equal(KEY_PATTERNS.some((p) => p.test('just some ordinary text with sk-ant- and sb_secret_ mentioned')), false);
 });
 
 test('Secrets - no real .env file would be committed (only .env.example)', { skip }, () => {
@@ -44,8 +55,12 @@ test('Secrets - .env.example documents the settings and holds no real value', ()
   assert.match(text, /ANTHROPIC_API_KEY=/);
   assert.match(text, /STORY_MODEL/);
   assert.match(text, /STORIES_DIR/);
-  assert.doesNotMatch(text, /sk-ant-[A-Za-z0-9_-]{20,}/);
-  assert.match(text, /ANTHROPIC_API_KEY=\s*(\r?\n|$)/, 'the example key line must be empty');
+  assert.match(text, /SUPABASE_URL=/);
+  assert.match(text, /SUPABASE_SERVICE_ROLE_KEY=/);
+  assert.equal(KEY_PATTERNS.some((p) => p.test(text)), false);
+  for (const name of ['ANTHROPIC_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']) {
+    assert.match(text, new RegExp(`^${name}=\\s*$`, 'm'), `the example ${name} line must be empty`);
+  }
 });
 
 function sourceFiles(dir) {
@@ -56,7 +71,7 @@ function sourceFiles(dir) {
 }
 
 test('Secrets - browser code never imports the modules that handle the API key or touch the disk', () => {
-  const serverOnly = /from\s+['"][^'"]*\/(lib\/(pipeline|config|doctor)|lib\/stories\/catalog)(\/[^'"]*)?['"]/;
+  const serverOnly = /from\s+['"][^'"]*\/(lib\/(pipeline|config|doctor|db)|lib\/stories\/(catalog|file-repository|supabase-repository|get-repository|import|validate-for-save))(\/[^'"]*)?['"]/;
   const clientFiles = sourceFiles(path.join(root, 'src')).filter((f) => /^\s*['"]use client['"]/.test(fs.readFileSync(f, 'utf-8')));
 
   assert.ok(clientFiles.length > 5, 'expected to find the client components');

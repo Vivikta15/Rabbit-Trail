@@ -1,0 +1,45 @@
+name: Daily story
+
+# Writes one new verified story to Supabase every day. It runs here, not on Vercel, because it takes a minute or
+# two (longer than a serverless function may run) and so that the Anthropic key lives only in GitHub, never on the
+# website. A red run means something needs attention, and GitHub emails the repository owner.
+
+on:
+  schedule:
+    - cron: '17 3 * * *' # 03:17 UTC every day (off the top of the hour, when GitHub is busiest)
+  workflow_dispatch: {} # lets you run it by hand from the Actions tab
+
+# Never two runs at once. (The database also holds a lock, as a second line of defence.)
+concurrency:
+  group: daily-story
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Refuse to run on this runner's throwaway disk: stories must go to Supabase or nowhere.
+      REQUIRE_SUPABASE: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Fails fast, with a plain explanation, if a secret is missing or wrong or the database is not set up.
+      - name: Check the setup
+        run: npm run doctor
+
+      - name: Write today's story
+        run: npm run stories:generate

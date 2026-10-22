@@ -5,12 +5,13 @@ import { VERIFIED_STORIES } from '../../data/stories';
 import { ARCHETYPES } from '../../data/archetypes';
 import { Story } from '../../types';
 import { StoryIndexEntry } from './daily-pick';
+import { StoriesReport } from './repository';
+import { SAFE_STORY_ID } from './story-id';
 
 export function storiesDir(): string {
   return process.env.STORIES_DIR || path.join(process.cwd(), 'content', 'stories');
 }
 
-const SAFE_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const isString = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
@@ -33,7 +34,7 @@ export function explainStoryProblem(value: unknown): string | null {
   if (!value || typeof value !== 'object') return 'the story must be a JSON object';
   const s = value as Record<string, any>;
 
-  if (!isString(s.id) || !SAFE_ID.test(s.id)) return 'id must be lowercase letters, digits and dashes';
+  if (!isString(s.id) || !SAFE_STORY_ID.test(s.id)) return 'id must be lowercase letters, digits and dashes';
   if (!isString(s.date) || !DATE.test(s.date)) return 'date must look like YYYY-MM-DD';
   for (const field of ['title', 'protagonist', 'topic', 'era', 'decisionContext', 'whatWeCantProve']) {
     if (!isString(s[field])) return `${field} must be a non-empty string`;
@@ -116,16 +117,42 @@ export function loadGeneratedStories(dir: string = storiesDir()): Story[] {
   return inspectStoriesDir(dir).valid;
 }
 
-// The seed story first claims its id; a generated file can never shadow it or another story.
-export function loadCatalog(dir: string = storiesDir()): Story[] {
+// The built-in story claims its id first; a stored story can never shadow it or another story. Oldest first.
+function mergeWithBuiltIn(stored: Story[]): Story[] {
   const seen = new Set<string>();
   const catalog: Story[] = [];
-  for (const story of [...VERIFIED_STORIES, ...loadGeneratedStories(dir)]) {
+  for (const story of [...VERIFIED_STORIES, ...stored]) {
     if (seen.has(story.id)) continue;
     seen.add(story.id);
     catalog.push(story);
   }
   return catalog.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+}
+
+export function loadCatalog(dir: string = storiesDir()): Story[] {
+  return mergeWithBuiltIn(loadGeneratedStories(dir));
+}
+
+// The catalog from any storage backend (local files or Supabase).
+export async function getCatalog(repo: { list(): Promise<StoriesReport> }): Promise<Story[]> {
+  return mergeWithBuiltIn((await repo.list()).valid);
+}
+
+// One story: the built-in one if the id is its own, otherwise the store. Reads a single record, not the catalog.
+export async function getStoryById(repo: { get(id: string): Promise<Story | null> }, id: string): Promise<Story | null> {
+  return VERIFIED_STORIES.find((s) => s.id === id) ?? (await repo.get(id));
+}
+
+// The light list the daily feed works from: the built-in story plus stored ones, oldest first, no bodies.
+export async function getIndex(repo: { listIndex(): Promise<StoryIndexEntry[]> }): Promise<StoryIndexEntry[]> {
+  const seen = new Set<string>();
+  const index: StoryIndexEntry[] = [];
+  for (const entry of [...VERIFIED_STORIES.map(toIndexEntry), ...(await repo.listIndex())]) {
+    if (seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    index.push(entry);
+  }
+  return index.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
 }
 
 export function toIndexEntry(story: Story): StoryIndexEntry {

@@ -19,7 +19,28 @@ export function saveKeyToEnvFile(file: string, key: string): void {
   fs.renameSync(temp, file);
 }
 
-const escapeForRegex = (s: string) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+// Sets several NAME=value lines in one step (the file is replaced whole, or not at all). A name or value that
+// could break the file's format, or inject another line, is refused before anything is written.
+export function saveEnvValues(file: string, values: Record<string, string>): void {
+  for (const [name, value] of Object.entries(values)) {
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) throw new Error(`Invalid setting name "${name.slice(0, 40)}".`);
+    if (/[\r\n]/.test(value)) throw new Error(`The value for ${name} contains a line break.`);
+  }
+
+  let content = '';
+  try {
+    content = fs.readFileSync(file, 'utf-8');
+  } catch {
+    // a missing file is fine; it is created below
+  }
+  for (const [name, value] of Object.entries(values)) content = upsertEnvLine(content, name, value);
+
+  const temp = `${file}.tmp`;
+  fs.writeFileSync(temp, content, { mode: 0o600 });
+  fs.renameSync(temp, file);
+}
+
+const escapeForRegex =(s: string) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&');
 
 // Would git ignore this file name (at the repository root) given the text of a .gitignore? Handles the plain
 // name and * / ? wildcards, comments and negations, which covers how .env files are normally ignored.

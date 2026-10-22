@@ -1,13 +1,16 @@
 import TodayPicker from '../../components/today/TodayPicker';
-import { loadCatalog, toIndexEntry } from '../../lib/stories/catalog';
+import { getIndex } from '../../lib/stories/catalog';
+import { getRepository } from '../../lib/stories/get-repository';
 
 // The catalog grows while the app is running, so this must be read on every request, never at build time.
 export const dynamic = 'force-dynamic';
 
-export default function TodayPage() {
+export default async function TodayPage() {
+  const index = await getIndex(getRepository());
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
-      <TodayPicker index={loadCatalog().map(toIndexEntry)} />
+      <TodayPicker index={index} />
     </main>
   );
 }

@@ -10,6 +10,7 @@ const { buildGenerationPrompt, parseGeneratedStory } = require('../dist/lib/pipe
 const { normalizeForMatch, checkQuotes, verifyStory } = require('../dist/lib/pipeline/verify.js');
 const { createAnthropicClient } = require('../dist/lib/pipeline/llm-client.js');
 const { publishStory, recordRejection, loadRejected } = require('../dist/lib/pipeline/publish.js');
+const { createFileRepository } = require('../dist/lib/stories/file-repository.js');
 const { generateNextStory } = require('../dist/lib/pipeline/run.js');
 const { loadCatalog } = require('../dist/lib/stories/catalog.js');
 const { VERIFIED_STORIES } = require('../dist/data/stories.js');
@@ -409,7 +410,7 @@ test('Run - publishes the first topic that passes generation and verification', 
   const wiki = fakeWiki({ 'Battle of Lepanto (1571)': page() });
   const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
   // The seed links to Lepanto, so it is the frontier topic with an empty generated directory.
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 3 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 3 });
 
   assert.equal(result.status, 'published');
   assert.equal(result.id, 'story-battle-of-lepanto-1571');
@@ -424,7 +425,7 @@ test('Run - a topic that redirects to the published page is remembered so it is 
   const wiki = fakeWiki({ 'Good Page (alias)': goodPage() }); // the alias resolves to the page titled "Good Page"
   const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 1 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 1 });
 
   assert.equal(result.status, 'published');
   assert.ok(loadRejected(dir).has('good page (alias)'));
@@ -438,7 +439,7 @@ test('Run - skips a page the model declines, remembers it, and tries the next to
     judge: judgeOk(),
   });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 5 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 5 });
 
   assert.equal(result.status, 'published');
   assert.equal(result.id, 'story-good-page');
@@ -453,7 +454,7 @@ test('Run - a story that fails verification is not published and the topic is no
   unsupported.claims[0].supported = false;
   const llm = fakeLlm({ generation: draft(), judge: unsupported });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 2 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 2 });
 
   assert.equal(result.status, 'failed');
   assert.equal(loadCatalog(dir).some((s) => s.id === 'story-good-page'), false, 'nothing unverified may be published');
@@ -467,7 +468,7 @@ test('Run - a page that redirects to an already covered story is not published t
   const wiki = fakeWiki({ 'Alias Of Seed': page({ title: VERIFIED_STORIES[0].source.title }) });
   const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 1 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 1 });
 
   assert.equal(result.status, 'failed');
   assert.equal(llm.calls.length, 0, 'no model call for a story we already have');
@@ -479,7 +480,7 @@ test('Run - reports when there is no topic left to follow', async () => {
   // Cover every seed topic too, so the frontier is empty.
   for (const t of VERIFIED_STORIES[0].relatedTopics) recordRejection(dir, t, 'test', '2026-10-22');
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki: fakeWiki({}), llm: fakeLlm(), maxAttempts: 3 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki: fakeWiki({}), llm: fakeLlm(), maxAttempts: 3 });
 
   assert.equal(result.status, 'no-topic');
 });
@@ -489,7 +490,7 @@ test('Run - a missing or unusable page is remembered and skipped', async () => {
   const wiki = fakeWiki({ 'Good Page': goodPage() });
   const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 5 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 5 });
 
   assert.equal(result.status, 'published');
   assert.ok(loadRejected(dir).has('ghost page'));
@@ -500,7 +501,7 @@ test('Run - gives up after the attempt limit without publishing', async () => {
   const wiki = fakeWiki({});
   const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
 
-  const result = await generateNextStory({ dir, today: '2026-10-22', wiki, llm, maxAttempts: 2 });
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 2 });
 
   assert.equal(result.status, 'failed');
   assert.equal(wiki.asked.length, 2);

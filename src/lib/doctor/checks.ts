@@ -1,6 +1,6 @@
-import path from 'node:path';
+import { BackendChoice, chooseBackend, describeServiceKey } from '../config/backend';
 import { DEFAULT_MODEL, describeKey, KEY_NAME, validateApiKey } from '../config/env';
-import { StoriesDirReport } from '../stories/catalog';
+import { StoryRepository } from '../stories/repository';
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'skip';
 
@@ -19,17 +19,17 @@ export interface DoctorDeps {
   envFileExists: boolean;
   pingWikipedia(): Promise<void>;
   pingAnthropic(config: { apiKey: string; model: string }): Promise<void>;
-  inspectDir(dir: string): StoriesDirReport;
-  ensureWritable(dir: string): void;
-  lockState(dir: string): 'none' | 'held' | 'stale';
-  staleTempFiles(dir: string): string[];
+  openRepository(choice: Exclude<BackendChoice, { kind: 'error' }>): StoryRepository;
+  // Only meaningful for local files: Supabase keeps its lock in the database.
+  fileHousekeeping(dir: string): { lock: 'none' | 'held' | 'stale'; staleTemps: string[] };
 }
 
 const SETUP_KEY_FIX = 'Run "npm run setup:key" and paste your key at the hidden prompt.';
+const SUPABASE_FIX = 'See DEPLOY.md, step 1: create the Supabase project, then set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.';
 const MIN_NODE_MAJOR = 22;
 
-function redact(text: string, secret: string | undefined): string {
-  return secret ? text.split(secret).join('[key]') : text;
+function redact(text: string, secrets: string[]): string {
+  return secrets.reduce<string>((acc, s) => (s ? acc.split(s).join('[key]') : acc), text);
 }
 
 export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
@@ -48,7 +48,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
     deps.envFileExists
       ? { name: 'Settings file', status: 'pass', detail: '.env.local found' }
       : rawKey
-        ? { name: 'Settings file', status: 'pass', detail: 'no .env.local, but the key comes from the environment' }
+        ? { name: 'Settings file', status: 'pass', detail: 'no .env.local, but the settings come from the environment' }
         : { name: 'Settings file', status: 'warn', detail: '.env.local not found', fix: SETUP_KEY_FIX },
   );
 
@@ -72,7 +72,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
       await deps.pingAnthropic({ apiKey: key.key, model });
       add({ name: 'Anthropic connection', status: 'pass', detail: `key accepted and ${model} answered` });
     } catch (err) {
-      add({ name: 'Anthropic connection', status: 'fail', detail: redact((err as Error).message, key.key), fix: 'Check the key at console.anthropic.com, then run "npm run setup:key" again.' });
+      add({ name: 'Anthropic connection', status: 'fail', detail: redact((err as Error).message, [key.key]), fix: 'Check the key at console.anthropic.com, then run "npm run setup:key" again.' });
     }
   } else {
     add({ name: 'Anthropic connection', status: 'skip', detail: 'not tried until the key and model above are fixed' });
@@ -85,37 +85,77 @@ export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
     add({ name: 'Wikipedia connection', status: 'fail', detail: (err as Error).message, fix: 'Check your internet connection and try again.' });
   }
 
-  const dir = deps.env.STORIES_DIR || path.join(deps.cwd, 'content', 'stories');
-  try {
-    deps.ensureWritable(dir);
-    add({ name: 'Stories folder', status: 'pass', detail: `${dir} is writable` });
-  } catch (err) {
-    add({ name: 'Stories folder', status: 'fail', detail: `${dir}: ${(err as Error).message}`, fix: 'Choose a folder you can write to with STORIES_DIR in .env.local.' });
-  }
+  // ---- where stories live ----
+  const choice = chooseBackend(deps.env, deps.cwd);
+  let repo: StoryRepository | null = null;
 
-  const report = deps.inspectDir(dir);
-  if (report.problems.length > 0) {
-    const listing = report.problems.map((p) => `${p.file}: ${p.reason}`).join('; ');
-    add({ name: 'Story files', status: 'warn', detail: `${report.valid.length} usable, ${report.problems.length} unusable (${listing})`, fix: 'Repair or delete those files. The feed ignores them in the meantime.' });
+  if (choice.kind === 'error') {
+    add({ name: 'Story storage', status: 'fail', detail: choice.problems.join(' '), fix: SUPABASE_FIX });
   } else {
-    add({ name: 'Story files', status: 'pass', detail: `${report.valid.length} generated stories (plus the built-in one)` });
+    repo = deps.openRepository(choice);
+    add(
+      choice.kind === 'supabase'
+        ? { name: 'Story storage', status: 'pass', detail: `${repo.describe()}, key ${describeServiceKey(choice.serviceKey)}` }
+        : {
+            name: 'Story storage',
+            status: 'warn',
+            detail: `${repo.describe()} (fine for development, but the website cannot keep files)`,
+            fix: 'For the deployed site, set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (see DEPLOY.md).',
+          },
+    );
   }
 
-  const lock = deps.lockState(dir);
-  add(
-    lock === 'none'
-      ? { name: 'Run lock', status: 'pass', detail: 'no run in progress' }
-      : lock === 'held'
-        ? { name: 'Run lock', status: 'warn', detail: 'a story run is in progress right now', fix: 'Wait for it to finish before starting another.' }
-        : { name: 'Run lock', status: 'warn', detail: 'a crashed run left a lock behind', fix: 'Nothing to do: the next run takes it over.' },
-  );
+  let accessOk = false;
+  if (repo) {
+    try {
+      add({ name: 'Storage access', status: 'pass', detail: redact(await repo.verify(), choice.kind === 'supabase' ? [choice.serviceKey] : []) });
+      accessOk = true;
+    } catch (err) {
+      add({
+        name: 'Storage access',
+        status: 'fail',
+        detail: redact((err as Error).message, choice.kind === 'supabase' ? [choice.serviceKey] : []),
+        fix: choice.kind === 'supabase' ? 'Fix the Supabase setting named above, then run "npm run doctor" again.' : 'Choose a folder you can write to with STORIES_DIR.',
+      });
+    }
+  } else {
+    add({ name: 'Storage access', status: 'skip', detail: 'not tried until the storage settings are fixed' });
+  }
 
-  const temps = deps.staleTempFiles(dir);
-  add(
-    temps.length === 0
-      ? { name: 'Leftover temp files', status: 'pass', detail: 'none' }
-      : { name: 'Leftover temp files', status: 'warn', detail: temps.join(', '), fix: 'Nothing to do: the next run removes them.' },
-  );
+  if (repo && accessOk) {
+    try {
+      const report = await repo.list();
+      if (report.problems.length > 0) {
+        const listing = report.problems.map((p) => `${p.file}: ${p.reason}`).join('; ');
+        add({ name: 'Stored stories', status: 'warn', detail: `${report.valid.length} usable, ${report.problems.length} unusable (${listing})`, fix: 'Repair or delete those records. The feed ignores them in the meantime.' });
+      } else {
+        add({ name: 'Stored stories', status: 'pass', detail: `${report.valid.length} stored (plus the built-in one)` });
+      }
+    } catch (err) {
+      add({ name: 'Stored stories', status: 'fail', detail: (err as Error).message });
+    }
+  } else {
+    add({ name: 'Stored stories', status: 'skip', detail: 'not read until storage access works' });
+  }
+
+  if (choice.kind === 'file') {
+    const { lock, staleTemps } = deps.fileHousekeeping(choice.dir);
+    add(
+      lock === 'none'
+        ? { name: 'Run lock', status: 'pass', detail: 'no run in progress' }
+        : lock === 'held'
+          ? { name: 'Run lock', status: 'warn', detail: 'a story run is in progress right now', fix: 'Wait for it to finish before starting another.' }
+          : { name: 'Run lock', status: 'warn', detail: 'a crashed run left a lock behind', fix: 'Nothing to do: the next run takes it over.' },
+    );
+    add(
+      staleTemps.length === 0
+        ? { name: 'Leftover temp files', status: 'pass', detail: 'none' }
+        : { name: 'Leftover temp files', status: 'warn', detail: staleTemps.join(', '), fix: 'Nothing to do: the next run removes them.' },
+    );
+  } else {
+    add({ name: 'Run lock', status: 'pass', detail: 'kept in the database and released automatically if a run dies' });
+    add({ name: 'Leftover temp files', status: 'pass', detail: 'not applicable: stories are written to the database, not to files' });
+  }
 
   return results;
 }
