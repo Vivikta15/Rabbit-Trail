@@ -7,6 +7,7 @@ import { ARCHETYPES } from '../../data/archetypes';
 import { recordActivity } from '../../hooks/use-activity-log';
 import { localDateString } from '../../lib/habit/activity-log';
 import type { PersonalizedStory } from '../../lib/llm/rewrite-engine';
+import { CHEER_EVENT } from '../../lib/mascot/mood';
 import { ArchetypeId } from '../../types';
 import SourceCitations from './SourceCitations';
 
@@ -54,6 +55,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
       readCounterArgument: counterSeen.current,
     });
     setFinished(true);
+    window.dispatchEvent(new Event(CHEER_EVENT));
   }
 
   // Only the latest request may touch the screen, so a slow earlier response can never replace a

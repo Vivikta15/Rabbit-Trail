@@ -2,13 +2,16 @@
 
 import { useMemo } from 'react';
 import CuriosityMetrics from '../../components/dashboard/CuriosityMetrics';
+import RabbitStreakCard from '../../components/dashboard/RabbitStreakCard';
 import StreakDisplay from '../../components/dashboard/StreakDisplay';
 import TrailMap from '../../components/dashboard/TrailMap';
 import { useActivityLog } from '../../hooks/use-activity-log';
+import { useStreakMood } from '../../hooks/use-mascot';
 import { localDateString, summarizeActivity } from '../../lib/habit/activity-log';
 
 export default function DashboardPage() {
   const { log } = useActivityLog();
+  const mood = useStreakMood();
   const summary = useMemo(() => (log ? summarizeActivity(log, localDateString()) : null), [log]);
 
   return (
@@ -23,6 +26,7 @@ export default function DashboardPage() {
         <p className="text-slate-400">Loading your trail…</p>
       ) : (
         <>
+          {mood && <RabbitStreakCard mood={mood} />}
           <StreakDisplay streak={summary.streak} />
           <CuriosityMetrics summary={summary} />
           <section aria-labelledby="trail-map-heading">

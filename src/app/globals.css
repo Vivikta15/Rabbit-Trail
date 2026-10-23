@@ -28,3 +28,31 @@ body {
     animation: none;
   }
 }
+
+/* The rabbit mascot. All of this stops for readers who ask for reduced motion. */
+@keyframes rabbit-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@keyframes rabbit-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-9px) scale(0.98, 1.03); }
+  55% { transform: translateY(0) scale(1.03, 0.97); }
+}
+@keyframes rabbit-sway {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+}
+@keyframes rabbit-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.rabbit-bob { animation: rabbit-bob 3.2s ease-in-out infinite; }
+.rabbit-hop { animation: rabbit-hop 1.4s ease-in-out infinite; }
+.rabbit-sway { animation: rabbit-sway 3.6s ease-in-out infinite; }
+.rabbit-twinkle { animation: rabbit-twinkle 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rabbit-bob, .rabbit-hop, .rabbit-sway, .rabbit-twinkle { animation: none; }
+}
