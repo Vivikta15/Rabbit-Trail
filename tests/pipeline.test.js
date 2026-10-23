@@ -572,3 +572,50 @@ test('Run - gives up after the attempt limit without publishing', async () => {
   assert.equal(result.status, 'failed');
   assert.equal(wiki.asked.length, 2);
 });
+
+// ---- a separate judge model ---------------------------------------------------------------------------------------
+
+test('Run - the checking step goes to the judge model when one is given, and the writer is not asked to check itself', async () => {
+  const dir = tempDir();
+  const wiki = fakeWiki({ 'Battle of Lepanto (1571)': page() });
+  const writer = fakeLlm({ generation: draft(), judge: judgeOk() });
+  const judge = fakeLlm({ generation: draft(), judge: judgeOk() });
+
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm: writer, judge, maxAttempts: 1 });
+
+  assert.equal(result.status, 'published');
+  assert.equal(writer.calls.length, 1, 'the writer only writes');
+  assert.equal(judge.calls.length, 1, 'the judge only checks');
+  assert.match(judge.calls[0].user, /CLAIMS TO CHECK/);
+});
+
+test('Run - without a judge model the writer checks its own work, as before', async () => {
+  const dir = tempDir();
+  const wiki = fakeWiki({ 'Battle of Lepanto (1571)': page() });
+  const llm = fakeLlm({ generation: draft(), judge: judgeOk() });
+
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm, maxAttempts: 1 });
+
+  assert.equal(result.status, 'published');
+  assert.equal(llm.calls.length, 2);
+});
+
+test('Run - the call budget covers the judge too', async () => {
+  const dir = tempDir();
+  const wiki = fakeWiki({ 'Battle of Lepanto (1571)': page() });
+  const writer = fakeLlm({ generation: draft(), judge: judgeOk() });
+  const judge = fakeLlm({ generation: draft(), judge: judgeOk() });
+
+  const result = await generateNextStory({ repo: createFileRepository(dir), today: '2026-10-22', wiki, llm: writer, judge, maxAttempts: 1, maxModelCalls: 1 });
+
+  assert.equal(result.status, 'aborted');
+  assert.match(result.reason, /budget/);
+  assert.equal(judge.calls.length, 0, 'the second call was refused before it was made');
+});
+
+test('Prompt - asks for names exactly as the quote has them and for whole-sentence quotes', () => {
+  const { system } = buildGenerationPrompt(page());
+
+  assert.match(system, /full name|exactly as (it|they) appear/i, 'names must match the quote');
+  assert.match(system, /whole sentence|complete sentence/i, 'quotes start and end at sentence boundaries');
+});

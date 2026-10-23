@@ -1,5 +1,6 @@
 import { ARCHETYPES } from '../../data/archetypes';
 import { Story } from '../../types';
+import { PipelineAbort } from './http';
 import { LlmClient } from './llm-client';
 import { WikiPage } from './wikipedia';
 
@@ -110,6 +111,8 @@ export async function verifyStory(story: Story, page: WikiPage, llm: LlmClient):
   try {
     raw = await llm.complete(JUDGE_SYSTEM, judgeUserPrompt(story));
   } catch (err) {
+    // A stop signal (spent quota, bad key, budget) ends the run; only an ordinary failure counts against this story.
+    if (err instanceof PipelineAbort) throw err;
     return { ok: false, failures: [`the verification judge could not be reached: ${(err as Error).message}`] };
   }
 

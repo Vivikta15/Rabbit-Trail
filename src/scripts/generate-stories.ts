@@ -34,6 +34,9 @@ async function main(): Promise<number> {
   const { provider, model } = config.config;
   const repo = createRepository(backend);
   const llm = createLlmClient(config.config);
+  // A separate checking model, when configured, so the writer never grades its own work.
+  const { judgeModel } = config.config;
+  const judge = judgeModel && judgeModel !== model ? createLlmClient({ ...config.config, model: judgeModel }) : undefined;
 
   // Fail before spending anything if the store is not ready (missing tables, bad key, unwritable folder).
   try {
@@ -46,7 +49,7 @@ async function main(): Promise<number> {
   const count = parseCount(process.argv.slice(2));
   let published = 0;
   let problem = false; // an outage or a run that could not produce a story, as opposed to "nothing left to do"
-  console.log(`Writing to ${repo.describe()} using ${PROVIDER_LABEL[provider]}, model ${model}`);
+  console.log(`Writing to ${repo.describe()} using ${PROVIDER_LABEL[provider]}, model ${model}${judge ? `, checked by ${judgeModel}` : ''}`);
 
   for (let i = 0; i < count; i++) {
     const result = await generateNextStory({
@@ -54,6 +57,7 @@ async function main(): Promise<number> {
       today: localDateString(),
       wiki: { fetchPage: (title) => fetchPage(title) },
       llm,
+      ...(judge && { judge }),
       maxAttempts: MAX_ATTEMPTS_PER_STORY,
       maxModelCalls: MAX_MODEL_CALLS_PER_STORY,
       log: (line) => console.log(line),
@@ -76,8 +80,10 @@ async function main(): Promise<number> {
     }
   }
 
-  const usage = llm.usage?.();
-  if (usage) console.log(`Model usage: ${usage.calls} calls, ${usage.inputTokens} input and ${usage.outputTokens} output tokens.`);
+  for (const [label, client] of [['Model', llm], ['Judge', judge]] as const) {
+    const usage = client?.usage?.();
+    if (usage) console.log(`${label} usage: ${usage.calls} calls, ${usage.inputTokens} input and ${usage.outputTokens} output tokens.`);
+  }
   console.log(`Done: ${published} new ${published === 1 ? 'story' : 'stories'}.`);
 
   // A scheduled run is marked failed (and the owner notified) only when something went wrong. Having nothing

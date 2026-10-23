@@ -156,3 +156,26 @@ test('Factory - builds the client for the chosen provider and passes the model t
   assert.match(seen[1], /anthropic\.com/);
   assert.equal(gemini.usage().calls, 1);
 });
+
+// ---- a separate model for the checking step ---------------------------------------------------------------------
+
+test('Provider - a judge model is optional and read from GEMINI_JUDGE_MODEL', () => {
+  const none = loadLlmConfig({ GEMINI_API_KEY: gemKey() });
+  const some = loadLlmConfig({ GEMINI_API_KEY: gemKey(), GEMINI_JUDGE_MODEL: ' gemini-3.5-flash-lite ' });
+
+  assert.equal(none.config.judgeModel, undefined);
+  assert.equal(some.config.judgeModel, 'gemini-3.5-flash-lite');
+});
+
+test('Provider - Claude reads its judge model from STORY_JUDGE_MODEL, and ignores the Gemini one', () => {
+  const r = loadLlmConfig({ ANTHROPIC_API_KEY: antKey(), STORY_JUDGE_MODEL: 'claude-haiku-5-5', GEMINI_JUDGE_MODEL: 'gemini-x' });
+
+  assert.equal(r.config.judgeModel, 'claude-haiku-5-5');
+});
+
+test('Provider - a malformed judge model is named in the problem list', () => {
+  const r = loadLlmConfig({ GEMINI_API_KEY: gemKey(), GEMINI_JUDGE_MODEL: 'bad model!' });
+
+  assert.equal(r.ok, false);
+  assert.ok(r.problems.some((p) => /GEMINI_JUDGE_MODEL/.test(p)));
+});

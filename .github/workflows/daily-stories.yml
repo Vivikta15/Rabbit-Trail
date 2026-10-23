@@ -27,6 +27,8 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       # "gemini" or "anthropic". A repository variable (Settings -> Secrets and variables -> Actions -> Variables).
       LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      GEMINI_JUDGE_MODEL: ${{ vars.GEMINI_JUDGE_MODEL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # Refuse to run on this runner's throwaway disk: stories must go to Supabase or nowhere.

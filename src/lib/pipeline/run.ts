@@ -24,6 +24,8 @@ interface RunOptions {
   today: string;
   wiki: WikiSource;
   llm: LlmClient;
+  // Checks the draft. When absent, the writing model checks its own work.
+  judge?: LlmClient;
   maxAttempts: number;
   maxModelCalls?: number;
   // Called with a line of progress as the run goes (which topic is being tried, and why one was skipped).
@@ -33,15 +35,14 @@ interface RunOptions {
 const norm = (title: string) => title.trim().toLowerCase();
 
 // Counts every model call and refuses the one after the limit, so a bad day cannot run up a bill.
-function withBudget(llm: LlmClient, maxModelCalls: number | undefined): LlmClient {
-  let used = 0;
+function withBudget(llm: LlmClient, maxModelCalls: number | undefined, counter: { used: number }): LlmClient {
   return {
     usage: llm.usage?.bind(llm),
     async complete(system, user) {
-      if (maxModelCalls !== undefined && used >= maxModelCalls) {
+      if (maxModelCalls !== undefined && counter.used >= maxModelCalls) {
         throw new PipelineAbort(`Stopped: the budget of ${maxModelCalls} model calls for this run is spent.`);
       }
-      used += 1;
+      counter.used += 1;
       return llm.complete(system, user);
     },
   };
@@ -76,6 +77,7 @@ export async function generateNextStory(options: RunOptions): Promise<RunResult>
           ...(result.status === 'failed' ? { reasons: result.reasons } : {}),
           ...(result.status === 'aborted' ? { reason: result.reason } : {}),
           ...(options.llm.usage ? { usage: options.llm.usage() } : {}),
+          ...(options.judge?.usage ? { judgeUsage: options.judge.usage() } : {}),
         },
       });
     } catch {
@@ -87,8 +89,11 @@ export async function generateNextStory(options: RunOptions): Promise<RunResult>
   }
 }
 
-async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModelCalls, log }: RunOptions): Promise<RunResult> {
-  const llm = withBudget(rawLlm, maxModelCalls);
+async function runLocked({ repo, today, wiki, llm: rawLlm, judge: rawJudge, maxAttempts, maxModelCalls, log }: RunOptions): Promise<RunResult> {
+  // One shared count, so the budget covers writing and checking together.
+  const counter = { used: 0 };
+  const llm = withBudget(rawLlm, maxModelCalls, counter);
+  const judge = rawJudge ? withBudget(rawJudge, maxModelCalls, counter) : llm;
   const catalog = await getCatalog(repo);
   const rejected = await repo.loadRejected();
   const triedThisRun = new Set<string>();
@@ -130,7 +135,7 @@ async function runLocked({ repo, today, wiki, llm: rawLlm, maxAttempts, maxModel
         continue;
       }
 
-      const verification = await verifyStory(parsed.story, page, llm);
+      const verification = await verifyStory(parsed.story, page, judge);
       if (!verification.ok) {
         verification.failures.forEach((f) => addReason(`${topic}: ${f}`));
         continue;

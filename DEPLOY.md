@@ -101,6 +101,7 @@ settings refuses to run on purpose, rather than quietly showing a single story.
 | `ANTHROPIC_API_KEY` | your `.env.local`, GitHub secret | writing stories with Claude instead (not the website) |
 | `LLM_PROVIDER` | your `.env.local` (set for you), GitHub variable | which of the two writes stories: `gemini` or `anthropic` |
 | `GEMINI_MODEL` (optional) | `.env.local`, GitHub variable | which Gemini model (default `gemini-3.8-flash`) |
+| `GEMINI_JUDGE_MODEL` (optional) | `.env.local`, GitHub variable | a second, lighter model that only checks drafts, e.g. `gemini-3.5-flash-lite`; each model has its own daily allowance |
 | `SUPABASE_URL` | `.env.local`, GitHub secret, Vercel | everything that reads or writes stories |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
 | `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model (default `claude-sonnet-5-5`) |

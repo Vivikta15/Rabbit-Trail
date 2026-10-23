@@ -43,6 +43,9 @@ export interface LlmConfig {
   provider: Provider;
   apiKey: string;
   model: string;
+  // Optional second model that only checks the draft. A different model keeps the writer from grading its own work,
+  // and has its own request allowance.
+  judgeModel?: string;
 }
 
 export type LlmConfigResult = { ok: true; config: LlmConfig } | { ok: false; problems: string[] };
@@ -74,6 +77,7 @@ export function loadLlmConfig(env: Record<string, string | undefined>): LlmConfi
   const problems: string[] = [];
   let apiKey = '';
   let model: string;
+  let judgeModel: string | undefined;
 
   if (provider === 'gemini') {
     const key = validateGeminiKey(env.GEMINI_API_KEY);
@@ -81,15 +85,19 @@ export function loadLlmConfig(env: Record<string, string | undefined>): LlmConfi
     else problems.push(key.problem);
     model = (env.GEMINI_MODEL ?? '').trim() || DEFAULT_GEMINI_MODEL;
     if (!MODEL_SHAPE.test(model)) problems.push(`GEMINI_MODEL "${model.slice(0, 40)}" is not a valid model id. Remove it to use ${DEFAULT_GEMINI_MODEL}.`);
+    judgeModel = (env.GEMINI_JUDGE_MODEL ?? '').trim() || undefined;
+    if (judgeModel && !MODEL_SHAPE.test(judgeModel)) problems.push(`GEMINI_JUDGE_MODEL "${judgeModel.slice(0, 40)}" is not a valid model id. Remove it to let the main model check its own work.`);
   } else {
     const key = validateApiKey(env.ANTHROPIC_API_KEY);
     if (key.ok) apiKey = key.key;
     else problems.push(key.problem);
     model = (env.STORY_MODEL ?? '').trim() || DEFAULT_MODEL;
     if (!MODEL_SHAPE.test(model)) problems.push(`STORY_MODEL "${model.slice(0, 40)}" is not a valid model id. Remove it to use ${DEFAULT_MODEL}.`);
+    judgeModel = (env.STORY_JUDGE_MODEL ?? '').trim() || undefined;
+    if (judgeModel && !MODEL_SHAPE.test(judgeModel)) problems.push(`STORY_JUDGE_MODEL "${judgeModel.slice(0, 40)}" is not a valid model id. Remove it to let the main model check its own work.`);
   }
 
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, config: { provider, apiKey, model } };
+  return problems.length > 0 ? { ok: false, problems } : { ok: true, config: { provider, apiKey, model, ...(judgeModel && { judgeModel }) } };
 }
 
 export const PROVIDER_LABEL: Record<Provider, string> = { anthropic: 'Claude (Anthropic)', gemini: 'Gemini (Google)' };
