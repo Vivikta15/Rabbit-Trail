@@ -7,6 +7,7 @@ const path = require('node:path');
 const { runDoctor, formatReport, hasFailures } = require('../dist/lib/doctor/checks.js');
 const { saveKeyToEnvFile, isIgnoredByGit } = require('../dist/lib/config/env-file.js');
 const { DatabaseSchemaError } = require('../dist/lib/db/supabase-rest.js');
+const { PipelineAbort, AuthError } = require('../dist/lib/pipeline/http.js');
 
 // Built by concatenation so no key-looking literal sits in the repo.
 const fakeKey = () => 'sk-ant-' + 'api03-' + 'K'.repeat(40);
@@ -327,4 +328,21 @@ test('Git ignore - this repository really ignores .env.local', () => {
   const text = fs.readFileSync(path.join(__dirname, '..', '.gitignore'), 'utf-8');
 
   assert.equal(isIgnoredByGit(text, '.env.local'), true);
+});
+
+test('Doctor - a spent quota or an outage does not send the user to re-enter a working key', async () => {
+  for (const message of ['Gemini\'s free daily limit for "m" is used up (20 requests per day for that model).', 'Gemini is busy or unavailable (503). Please try again later.']) {
+    const results = await runDoctor(deps({ env: geminiEnv(), pingLlm: async () => { throw new PipelineAbort(message); } }));
+    const r = byName(results, 'AI connection');
+
+    assert.equal(r.status, 'fail');
+    assert.match(r.fix, /key is (fine|not the problem)|key itself/i);
+    assert.equal(/setup:gemini/.test(r.fix), false, 'no "enter the key again" advice');
+  }
+});
+
+test('Doctor - a rejected key still points at the key', async () => {
+  const results = await runDoctor(deps({ env: geminiEnv(), pingLlm: async () => { throw new AuthError('Google rejected the Gemini API key (403).'); } }));
+
+  assert.match(byName(results, 'AI connection').fix, /setup:gemini/);
 });

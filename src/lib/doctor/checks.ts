@@ -1,6 +1,7 @@
 import { BackendChoice, chooseBackend, describeServiceKey } from '../config/backend';
 import { describeKey } from '../config/env';
 import { describeGeminiKey, LlmConfig, loadLlmConfig, PROVIDER_LABEL } from '../config/provider';
+import { AuthError, PipelineAbort } from '../pipeline/http';
 import { StoryRepository } from '../stories/repository';
 
 export type CheckStatus = 'pass' | 'fail' | 'warn' | 'skip';
@@ -28,6 +29,17 @@ export interface DoctorDeps {
 const SETUP_AI_FIX = 'Run "npm run setup:gemini" (Google Gemini) or "npm run setup:key" (Anthropic Claude) and paste your key at the hidden prompt.';
 const SUPABASE_FIX = 'See DEPLOY.md, step 1: create the Supabase project, then set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.';
 const MIN_NODE_MAJOR = 22;
+
+// A spent quota, an outage or an unknown model says nothing against the key, so it must not send anyone to re-enter it.
+// Only a rejected key (or an error we cannot classify) points at the key.
+function connectionFix(err: unknown, provider: 'gemini' | 'anthropic'): string {
+  if (err instanceof PipelineAbort && !(err instanceof AuthError)) {
+    return 'The key itself is fine. Wait and run the check again, or try a different model (GEMINI_MODEL / STORY_MODEL). The message above says which.';
+  }
+  return provider === 'gemini'
+    ? 'Check the key at aistudio.google.com/apikey, then run "npm run setup:gemini" again.'
+    : 'Check the key at console.anthropic.com, then run "npm run setup:key" again.';
+}
 
 function redact(text: string, secrets: string[]): string {
   return secrets.reduce<string>((acc, s) => (s ? acc.split(s).join('[key]') : acc), text);
@@ -68,7 +80,7 @@ export async function runDoctor(deps: DoctorDeps): Promise<CheckResult[]> {
         name: 'AI connection',
         status: 'fail',
         detail: redact((err as Error).message, [apiKey]),
-        fix: provider === 'gemini' ? 'Check the key at aistudio.google.com/apikey, then run "npm run setup:gemini" again.' : 'Check the key at console.anthropic.com, then run "npm run setup:key" again.',
+        fix: connectionFix(err, provider),
       });
     }
   } else {
