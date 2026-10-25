@@ -1,4 +1,4 @@
-import { AuthError, fetchWithTimeout, HttpStatusError, ModelOutputError, PipelineAbort, RetryOptions, retryAfterMs, withRetry } from './http';
+import { AuthError, fetchWithTimeout, HttpStatusError, ModelOutputError, ModelUnavailable, PipelineAbort, RetryOptions, retryAfterMs, withRetry } from './http';
 import { LlmClient, LlmUsage } from './llm-client';
 
 interface GeminiFetchResponse {
@@ -125,7 +125,7 @@ export function createGeminiClient({ apiKey, model, maxTokens = 16000, timeoutMs
           // Read Google's explanation once. A daily limit cannot be waited out, so it stops here (an abort is never
           // retried); anything else is retried, waiting as long as Google asks.
           const info = parseGeminiError(await r.text().catch(() => ''));
-          if (r.status === 429 && isDailyLimit(info)) throw new PipelineAbort(dailyLimitMessage(model, info));
+          if (r.status === 429 && isDailyLimit(info)) throw new ModelUnavailable(dailyLimitMessage(model, info), true);
           throw Object.assign(new HttpStatusError(`status ${r.status}`, r.status, retryAfterMs(r.headers?.get('retry-after')) ?? info.retryDelayMs), { info });
         }, retryOptions);
       } catch (err) {
@@ -137,17 +137,17 @@ export function createGeminiClient({ apiKey, model, maxTokens = 16000, timeoutMs
             throw new AuthError(`Google rejected the Gemini API key (${err.status}). Run "npm run setup:gemini" to enter a working key. If the key is right, check that the Gemini API is enabled for its Google project.`);
           }
           if (err.status === 404) {
-            throw new PipelineAbort(`Gemini does not know the model "${model}" (404)${info.message ? `: ${info.message}` : ''} Set GEMINI_MODEL to a current model, or remove it to use the default.`);
+            throw new ModelUnavailable(`Gemini does not know the model "${model}" (404)${info.message ? `: ${info.message}` : ''} Set GEMINI_MODEL to a current model, or remove it to use the default.`, true);
           }
           if (err.status === 429) {
             if (isPerMinuteLimit(info)) {
               const amount = info.quotaValue ? ` (${info.quotaValue} requests per minute)` : '';
-              throw new PipelineAbort(`Gemini's per-minute limit for "${info.model ?? model}"${amount} was still reached after waiting. Please try again in a few minutes.`);
+              throw new ModelUnavailable(`Gemini's per-minute limit for "${info.model ?? model}"${amount} was still reached after waiting. Please try again in a few minutes.`, false);
             }
-            throw new PipelineAbort('Gemini says the rate or daily quota is used up (429). Wait a while (daily quotas reset at midnight Pacific time), set GEMINI_MODEL to a different model, or enable billing in Google AI Studio.');
+            throw new ModelUnavailable('Gemini says the rate or daily quota is used up (429). Wait a while (daily quotas reset at midnight Pacific time), set GEMINI_MODEL to a different model, or enable billing in Google AI Studio.', false);
           }
           if (err.status >= 500 || err.status === 408) {
-            throw new PipelineAbort(`Gemini is busy or unavailable (${err.status}). Please try again later.`);
+            throw new ModelUnavailable(`Gemini is busy or unavailable (${err.status}). Please try again later.`, false);
           }
           throw new PipelineAbort(`Gemini rejected the request (${err.status})${info.message ? `: ${info.message}` : ''}.`);
         }

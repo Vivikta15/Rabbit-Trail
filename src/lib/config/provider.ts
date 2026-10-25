@@ -46,12 +46,35 @@ export interface LlmConfig {
   // Optional second model that only checks the draft. A different model keeps the writer from grading its own work,
   // and has its own request allowance.
   judgeModel?: string;
+  // Models to try, in order, when the main one cannot answer (its daily allowance is spent, or it is busy).
+  fallbackModels?: string[];
+  judgeFallbackModels?: string[];
 }
 
 export type LlmConfigResult = { ok: true; config: LlmConfig } | { ok: false; problems: string[] };
 
 const set = (v: string | undefined) => (v ?? '').trim().length > 0;
 const MODEL_SHAPE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const MAX_MODELS = 4;
+
+// "a, b,a" -> ["a", "b"]: in order, without blanks or repeats, and no more than a few.
+function parseModelList(raw: string | undefined): string[] {
+  const seen = new Set<string>();
+  for (const part of (raw ?? '').split(',')) {
+    const name = part.trim();
+    if (name) seen.add(name);
+  }
+  return Array.from(seen);
+}
+
+// Checks a list from the settings and returns the first model, the fallbacks, and any problem found.
+function readModels(name: string, raw: string | undefined, fallback: string | undefined, problems: string[]): { primary: string | undefined; fallbacks: string[] } {
+  const all = parseModelList(raw);
+  const bad = all.find((m) => !MODEL_SHAPE.test(m));
+  if (bad) problems.push(`${name} "${bad.slice(0, 40)}" is not a valid model id. Remove it${fallback ? ` to use ${fallback}` : ' to let the main model check its own work'}.`);
+  const used = all.slice(0, MAX_MODELS);
+  return { primary: used[0], fallbacks: used.slice(1) };
+}
 
 export function loadLlmConfig(env: Record<string, string | undefined>): LlmConfigResult {
   const requested = (env.LLM_PROVIDER ?? '').trim().toLowerCase();
@@ -78,26 +101,32 @@ export function loadLlmConfig(env: Record<string, string | undefined>): LlmConfi
   let apiKey = '';
   let model: string;
   let judgeModel: string | undefined;
+  let fallbackModels: string[] = [];
+  let judgeFallbackModels: string[] = [];
 
   if (provider === 'gemini') {
     const key = validateGeminiKey(env.GEMINI_API_KEY);
     if (key.ok) apiKey = key.key;
     else problems.push(key.problem);
-    model = (env.GEMINI_MODEL ?? '').trim() || DEFAULT_GEMINI_MODEL;
-    if (!MODEL_SHAPE.test(model)) problems.push(`GEMINI_MODEL "${model.slice(0, 40)}" is not a valid model id. Remove it to use ${DEFAULT_GEMINI_MODEL}.`);
-    judgeModel = (env.GEMINI_JUDGE_MODEL ?? '').trim() || undefined;
-    if (judgeModel && !MODEL_SHAPE.test(judgeModel)) problems.push(`GEMINI_JUDGE_MODEL "${judgeModel.slice(0, 40)}" is not a valid model id. Remove it to let the main model check its own work.`);
+    const main = readModels('GEMINI_MODEL', env.GEMINI_MODEL, DEFAULT_GEMINI_MODEL, problems);
+    model = main.primary ?? DEFAULT_GEMINI_MODEL;
+    fallbackModels = main.fallbacks;
+    const judge = readModels('GEMINI_JUDGE_MODEL', env.GEMINI_JUDGE_MODEL, undefined, problems);
+    judgeModel = judge.primary;
+    judgeFallbackModels = judge.fallbacks;
   } else {
     const key = validateApiKey(env.ANTHROPIC_API_KEY);
     if (key.ok) apiKey = key.key;
     else problems.push(key.problem);
-    model = (env.STORY_MODEL ?? '').trim() || DEFAULT_MODEL;
-    if (!MODEL_SHAPE.test(model)) problems.push(`STORY_MODEL "${model.slice(0, 40)}" is not a valid model id. Remove it to use ${DEFAULT_MODEL}.`);
-    judgeModel = (env.STORY_JUDGE_MODEL ?? '').trim() || undefined;
-    if (judgeModel && !MODEL_SHAPE.test(judgeModel)) problems.push(`STORY_JUDGE_MODEL "${judgeModel.slice(0, 40)}" is not a valid model id. Remove it to let the main model check its own work.`);
+    const main = readModels('STORY_MODEL', env.STORY_MODEL, DEFAULT_MODEL, problems);
+    model = main.primary ?? DEFAULT_MODEL;
+    fallbackModels = main.fallbacks;
+    const judge = readModels('STORY_JUDGE_MODEL', env.STORY_JUDGE_MODEL, undefined, problems);
+    judgeModel = judge.primary;
+    judgeFallbackModels = judge.fallbacks;
   }
 
-  return problems.length > 0 ? { ok: false, problems } : { ok: true, config: { provider, apiKey, model, ...(judgeModel && { judgeModel }) } };
+  return problems.length > 0 ? { ok: false, problems } : { ok: true, config: { provider, apiKey, model, ...(fallbackModels.length > 0 && { fallbackModels }), ...(judgeModel && { judgeModel }), ...(judgeFallbackModels.length > 0 && { judgeFallbackModels }) } };
 }
 
 export const PROVIDER_LABEL: Record<Provider, string> = { anthropic: 'Claude (Anthropic)', gemini: 'Gemini (Google)' };

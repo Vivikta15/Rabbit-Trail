@@ -31,6 +31,13 @@ test('Docs - the reader accounts migration exists and the guide says to run it',
   assert.match(deploy, /Redirect URLs/);
 });
 
+test('Workflow - scheduled runs skip a day that already has a story, and a passing hiccup in the check cannot cancel the day', () => {
+  assert.equal((workflow.match(/- cron:/g) ?? []).length, 2, 'a second chance later in the day');
+  assert.match(workflow, /--if-missing-today/);
+  assert.match(workflow, /github\.event_name == 'schedule'/, 'a run started by hand always tries');
+  assert.match(workflow, /continue-on-error:\s*true\s+run: npm run doctor/);
+});
+
 test('Docs - every setting in .env.example is explained in the deploy guide', () => {
   const names = [...read('.env.example').matchAll(/^#?\s*([A-Z][A-Z0-9_]+)=/gm)].map((m) => m[1]);
 

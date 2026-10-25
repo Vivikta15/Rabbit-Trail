@@ -5,6 +5,14 @@
 // spend time and money on more attempts that cannot succeed, and must never blame the topic being tried.
 export class PipelineAbort extends Error {}
 
+// This model cannot answer right now, but another model might: its daily allowance is spent, it does not exist, or
+// it is busy. `permanent` means it will not recover during this run, so it should not be asked again.
+export class ModelUnavailable extends PipelineAbort {
+  constructor(message: string, readonly permanent: boolean) {
+    super(message);
+  }
+}
+
 // The service refused our credentials. Distinct from an outage so setup can say "that key is wrong".
 export class AuthError extends PipelineAbort {}
 

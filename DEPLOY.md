@@ -74,7 +74,7 @@ quote their source wrongly, but a model can still misjudge, so check a few befor
    the key you added.
 3. Open the **Actions** tab, choose **Daily story**, and click **Run workflow** once.
 
-**Check:** the run goes green and a new row appears in `stories`. From then on it runs every day at 03:17 UTC
+**Check:** the run goes green and a new row appears in `stories`. From then on it runs every day at 03:17 UTC, and again at 15:47 UTC if the first run did not produce that day's story (it does nothing when the story already exists)
 (change the `cron` line in `.github/workflows/daily-stories.yml` to move it). A red run means something needs
 attention, and GitHub emails you. The run's log says what.
 
@@ -120,8 +120,8 @@ Sign-in lets a reader keep their streak and trail across devices. The site works
 | `GEMINI_API_KEY` | your `.env.local`, GitHub secret | writing stories with Google Gemini (not the website) |
 | `ANTHROPIC_API_KEY` | your `.env.local`, GitHub secret | writing stories with Claude instead (not the website) |
 | `LLM_PROVIDER` | your `.env.local` (set for you), GitHub variable | which of the two writes stories: `gemini` or `anthropic` |
-| `GEMINI_MODEL` (optional) | `.env.local`, GitHub variable | which Gemini model (default `gemini-3.8-flash`) |
-| `GEMINI_JUDGE_MODEL` (optional) | `.env.local`, GitHub variable | a second, lighter model that only checks drafts, e.g. `gemini-3.5-flash-lite`; each model has its own daily allowance |
+| `GEMINI_MODEL` (optional) | `.env.local`, GitHub variable | which Gemini model (default `gemini-3.8-flash`). A comma-separated list, e.g. `gemini-3.6-flash,gemini-3.8-flash`, is tried in order, so one busy or used-up model does not lose the day |
+| `GEMINI_JUDGE_MODEL` (optional) | `.env.local`, GitHub variable | a second, lighter model that only checks drafts, e.g. `gemini-3.5-flash-lite` (a list works here too); each model has its own daily allowance |
 | `SUPABASE_URL` | `.env.local`, GitHub secret, Vercel | everything that reads or writes stories |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
 | `SUPABASE_PUBLISHABLE_KEY` (optional) | `.env.local`, Vercel | reader sign-in. The public key, sent to browsers on purpose; never the secret key |

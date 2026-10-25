@@ -6,6 +6,7 @@ name: Daily story
 on:
   schedule:
     - cron: '17 3 * * *' # 03:17 UTC every day (off the top of the hour, when GitHub is busiest)
+    - cron: '47 15 * * *' # a second chance later the same day: it does nothing if the first run already wrote today's story
   workflow_dispatch: {} # lets you run it by hand from the Actions tab
 
 # Never two runs at once. (The database also holds a lock, as a second line of defence.)
@@ -45,7 +46,11 @@ jobs:
 
       # Fails fast, with a plain explanation, if a secret is missing or wrong or the database is not set up.
       - name: Check the setup
+        # The report is for reading in the log. A passing hiccup (an AI model briefly busy) must not cancel the day's story;
+        # the generator below checks what it needs and stops with a clear message if something is really wrong.
+        continue-on-error: true
         run: npm run doctor
 
       - name: Write today's story
-        run: npm run stories:generate
+        # Scheduled runs only act when today has no story yet. A run started by hand always tries.
+        run: npm run stories:generate -- ${{ github.event_name == 'schedule' && '--if-missing-today' || '' }}

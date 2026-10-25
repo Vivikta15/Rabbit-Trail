@@ -2,9 +2,11 @@
 import { chooseBackend } from '../lib/config/backend';
 import { loadLlmConfig, PROVIDER_LABEL } from '../lib/config/provider';
 import { localDateString } from '../lib/habit/activity-log';
-import { createLlmClient } from '../lib/pipeline/llm-factory';
+import { needsStoryToday } from '../lib/pipeline/daily';
+import { createStoryClients } from '../lib/pipeline/llm-factory';
 import { generateNextStory } from '../lib/pipeline/run';
 import { fetchPage } from '../lib/pipeline/wikipedia';
+import { getCatalog } from '../lib/stories/catalog';
 import { createRepository } from '../lib/stories/get-repository';
 
 const MAX_COUNT = 10;
@@ -33,10 +35,8 @@ async function main(): Promise<number> {
 
   const { provider, model } = config.config;
   const repo = createRepository(backend);
-  const llm = createLlmClient(config.config);
-  // A separate checking model, when configured, so the writer never grades its own work.
-  const { judgeModel } = config.config;
-  const judge = judgeModel && judgeModel !== model ? createLlmClient({ ...config.config, model: judgeModel }) : undefined;
+  // A separate checking model, when configured, so the writer never grades its own work. Either can have fallbacks.
+  const { llm, judge } = createStoryClients(config.config, {}, (line) => console.log(line));
 
   // Fail before spending anything if the store is not ready (missing tables, bad key, unwritable folder).
   try {
@@ -46,10 +46,19 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  // A scheduled run only acts when today has no story yet, so it can be scheduled more than once a day.
+  if (process.argv.includes('--if-missing-today')) {
+    const today = localDateString();
+    if (!needsStoryToday(await getCatalog(repo), today)) {
+      console.log(`Today (${today}) already has its story. Nothing to do.`);
+      return 0;
+    }
+  }
+
   const count = parseCount(process.argv.slice(2));
   let published = 0;
   let problem = false; // an outage or a run that could not produce a story, as opposed to "nothing left to do"
-  console.log(`Writing to ${repo.describe()} using ${PROVIDER_LABEL[provider]}, model ${model}${judge ? `, checked by ${judgeModel}` : ''}`);
+  console.log(`Writing to ${repo.describe()} using ${PROVIDER_LABEL[provider]}, model ${[model, ...(config.config.fallbackModels ?? [])].join(' -> ')}${judge ? `, checked by ${[config.config.judgeModel, ...(config.config.judgeFallbackModels ?? [])].join(' -> ')}` : ''}`);
 
   for (let i = 0; i < count; i++) {
     const result = await generateNextStory({
