@@ -75,7 +75,9 @@ export function validatePublishableKey(raw: string | undefined): PublishableKeyC
   return { ok: false, problem: 'That does not look like a Supabase publishable key. It starts with "sb_publishable_".' };
 }
 
-export type AuthConfig = { enabled: true; url: string; publishableKey: string } | { enabled: false; problem: string };
+// `google` says whether to offer the Google button. It is off unless GOOGLE_SIGNIN_ENABLED=1, because the button
+// only works once Google has been set up in Supabase.
+export type AuthConfig = { enabled: true; url: string; publishableKey: string; google: boolean } | { enabled: false; problem: string };
 
 // What the browser is told about sign-in. Sign-in is simply off (never half-on) unless both values are good.
 export function loadAuthConfig(env: Record<string, string | undefined>): AuthConfig {
@@ -88,5 +90,5 @@ export function loadAuthConfig(env: Record<string, string | undefined>): AuthCon
   const service = (env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
   if (service && service === key.key) return { enabled: false, problem: SECRET_PROBLEM };
 
-  return { enabled: true, url: url.url, publishableKey: key.key };
+  return { enabled: true, url: url.url, publishableKey: key.key, google: (env.GOOGLE_SIGNIN_ENABLED ?? '').trim() === '1' };
 }

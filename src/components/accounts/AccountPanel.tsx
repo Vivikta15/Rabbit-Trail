@@ -6,7 +6,7 @@ import { useReader } from './ReaderProvider';
 const SYNC_TEXT = { idle: '', syncing: 'Saving your trail…', saved: 'Your trail is saved.', error: 'Could not save just now. We will try again.' } as const;
 
 export default function AccountPanel() {
-  const { status, email, message, sync, signInWithGoogle, sendLink, signOut } = useReader();
+  const { status, google, email, message, sync, signInWithGoogle, sendLink, signOut } = useReader();
   const [address, setAddress] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
@@ -59,17 +59,19 @@ export default function AccountPanel() {
       )}
       <p className="text-slate-300">Sign in to keep your trail and streak safe, and to pick up where you left off on any device. What you have read on this device is kept.</p>
 
-      <button
-        type="button"
-        onClick={signInWithGoogle}
-        className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-      >
-        Continue with Google
-      </button>
+      {google && (
+        <button
+          type="button"
+          onClick={signInWithGoogle}
+          className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          Continue with Google
+        </button>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-3">
         <label htmlFor="email" className="block text-sm text-slate-300">
-          Or get a sign-in link by email
+          {google ? 'Or get a sign-in link by email' : 'Get a sign-in link by email'}
         </label>
         <input
           id="email"

@@ -102,9 +102,11 @@ Sign-in lets a reader keep their streak and trail across devices. The site works
    `https://rabbittrail.vercel.app`) and add `https://rabbittrail.vercel.app/account` under **Redirect URLs**.
 3. **Email sign-in links:** Supabase's built-in sender allows only a few emails an hour. Under **Authentication ->
    SMTP Settings** connect a sender such as Resend (it has a free tier) before real readers arrive.
-4. **Google sign-in:** create an OAuth client in Google Cloud (**APIs & Services -> Credentials -> OAuth client ID**,
+4. **Google sign-in (optional, skip it if you like):** email links work on their own. Google asks for a billing account
+   when you create a Google Cloud project, so many people leave it out. To add it later, create an OAuth client in Google Cloud (**APIs & Services -> Credentials -> OAuth client ID**,
    type Web application). Add the redirect address Supabase shows under **Authentication -> Providers -> Google**,
-   then paste the client ID and secret into that Supabase page and switch Google on.
+   then paste the client ID and secret into that Supabase page and switch Google on. Finally set
+   `GOOGLE_SIGNIN_ENABLED` to `1` in Vercel (the button stays hidden until you do).
 5. In Vercel add `SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_` key from **Project Settings -> API Keys**) for
    Production and Preview, then redeploy. Never put the secret key here: the app refuses it.
 
@@ -123,6 +125,7 @@ Sign-in lets a reader keep their streak and trail across devices. The site works
 | `SUPABASE_URL` | `.env.local`, GitHub secret, Vercel | everything that reads or writes stories |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
 | `SUPABASE_PUBLISHABLE_KEY` (optional) | `.env.local`, Vercel | reader sign-in. The public key, sent to browsers on purpose; never the secret key |
+| `GOOGLE_SIGNIN_ENABLED` (optional) | Vercel | set to `1` to show the Google button, once Google is set up in Supabase |
 | `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model (default `claude-sonnet-5-5`) |
 | `STORIES_DIR` (optional) | `.env.local` | folder for local story files; ignored once Supabase is set |
 | `REQUIRE_SUPABASE` (optional) | set to `1` by the daily workflow | makes a run refuse to write to local files, so stories can only ever go to Supabase |

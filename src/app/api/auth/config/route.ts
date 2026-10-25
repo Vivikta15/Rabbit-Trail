@@ -11,5 +11,5 @@ export async function GET() {
     if (process.env.SUPABASE_PUBLISHABLE_KEY) console.error(`Sign-in is off: ${config.problem}`);
     return NextResponse.json({ enabled: false }, { headers: { 'Cache-Control': 'no-store' } });
   }
-  return NextResponse.json({ enabled: true, url: config.url, publishableKey: config.publishableKey }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ enabled: true, url: config.url, publishableKey: config.publishableKey, google: config.google }, { headers: { 'Cache-Control': 'no-store' } });
 }

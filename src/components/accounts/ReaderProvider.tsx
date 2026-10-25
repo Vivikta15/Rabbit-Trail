@@ -11,6 +11,8 @@ export type SyncState = 'idle' | 'syncing' | 'saved' | 'error';
 
 interface ReaderContextValue {
   status: ReaderStatus;
+  // Whether to offer the Google button (only once Google is set up).
+  google: boolean;
   email: string | null;
   // A kind message about the last sign-in attempt (for example "that link has expired"), or null.
   message: string | null;
@@ -23,6 +25,7 @@ interface ReaderContextValue {
 
 const OFF: ReaderContextValue = {
   status: 'disabled',
+  google: false,
   email: null,
   message: null,
   sync: 'idle',
@@ -57,6 +60,7 @@ export default function ReaderProvider({ children }: { children: React.ReactNode
   const [email, setEmail] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [sync, setSync] = useState<SyncState>('idle');
+  const [google, setGoogle] = useState(false);
 
   const settings = useRef<AuthSettings | null>(null);
   const session = useRef<Session | null>(null);
@@ -142,10 +146,14 @@ export default function ReaderProvider({ children }: { children: React.ReactNode
     let cancelled = false;
     (async () => {
       let found: AuthSettings | null = null;
+      let googleOn = false;
       try {
         const res = await fetch('/api/auth/config', { cache: 'no-store' });
         const body = await res.json();
-        if (body?.enabled === true && typeof body.url === 'string' && typeof body.publishableKey === 'string') found = { url: body.url, publishableKey: body.publishableKey };
+        if (body?.enabled === true && typeof body.url === 'string' && typeof body.publishableKey === 'string') {
+          found = { url: body.url, publishableKey: body.publishableKey };
+          googleOn = body.google === true;
+        }
       } catch {
         // Treated as "not switched on"; the app still works.
       }
@@ -155,6 +163,7 @@ export default function ReaderProvider({ children }: { children: React.ReactNode
         return;
       }
       settings.current = found;
+      setGoogle(googleOn);
 
       const storage = browserStorage();
       const back = parseAuthRedirect(window.location.hash, nowSeconds());
@@ -223,5 +232,5 @@ export default function ReaderProvider({ children }: { children: React.ReactNode
     }
   }, [dropSession]);
 
-  return <ReaderContext.Provider value={{ status, email, message, sync, signInWithGoogle, sendLink, signOut, syncNow }}>{children}</ReaderContext.Provider>;
+  return <ReaderContext.Provider value={{ status, google, email, message, sync, signInWithGoogle, sendLink, signOut, syncNow }}>{children}</ReaderContext.Provider>;
 }

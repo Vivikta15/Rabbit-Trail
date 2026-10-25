@@ -85,11 +85,19 @@ test('Public key - empty, placeholder and malformed values are refused', () => {
 
 test('Auth config - sign-in is on only when the project URL and a public key are both set', () => {
   const on = loadAuthConfig({ SUPABASE_URL: URL, SUPABASE_PUBLISHABLE_KEY: PUBLISHABLE, SUPABASE_SERVICE_ROLE_KEY: SERVICE });
-  assert.deepEqual(on, { enabled: true, url: URL, publishableKey: PUBLISHABLE });
+  assert.deepEqual(on, { enabled: true, url: URL, publishableKey: PUBLISHABLE, google: false });
 
   assert.equal(loadAuthConfig({ SUPABASE_URL: URL }).enabled, false);
   assert.equal(loadAuthConfig({ SUPABASE_PUBLISHABLE_KEY: PUBLISHABLE }).enabled, false);
   assert.equal(loadAuthConfig({}).enabled, false);
+});
+
+test('Auth config - the Google button is offered only when Google sign-in is switched on', () => {
+  const base = { SUPABASE_URL: URL, SUPABASE_PUBLISHABLE_KEY: PUBLISHABLE };
+
+  assert.equal(loadAuthConfig(base).google, false, 'off by default');
+  assert.equal(loadAuthConfig({ ...base, GOOGLE_SIGNIN_ENABLED: '1' }).google, true);
+  for (const other of ['0', 'true', 'yes', '', ' ']) assert.equal(loadAuthConfig({ ...base, GOOGLE_SIGNIN_ENABLED: other }).google, false, other);
 });
 
 test('Auth config - a secret key in the public slot turns sign-in off instead of leaking it', () => {
