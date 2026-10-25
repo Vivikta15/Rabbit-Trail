@@ -31,6 +31,8 @@ export interface SupabaseRest {
   select(table: string, query: string): Promise<any[]>;
   selectAll(table: string, query: string): Promise<any[]>;
   insert(table: string, row: Record<string, unknown>): Promise<void>;
+  // Inserts the row, or updates the row that has the same value in `conflictColumn` (its primary key).
+  upsert(table: string, row: Record<string, unknown>, conflictColumn: string): Promise<void>;
   rpc(fn: string, args: Record<string, unknown>): Promise<any>;
 }
 
@@ -48,12 +50,12 @@ export function createSupabaseRest({ url, serviceKey, fetchImpl, retry, timeoutM
   const doFetch = fetchImpl ?? ((fetch as unknown) as NonNullable<SupabaseRestOptions['fetchImpl']>);
   const retryOptions: RetryOptions = { retries: 3, baseDelayMs: 1000, maxDelayMs: 15000, ...retry };
 
-  async function request(method: 'GET' | 'POST', pathAndQuery: string, what: string, body?: unknown, wantBody = true): Promise<any> {
+  async function request(method: 'GET' | 'POST', pathAndQuery: string, what: string, body?: unknown, wantBody = true, prefer?: string): Promise<any> {
     const headers: Record<string, string> = {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
       'Content-Type': 'application/json',
-      ...(method === 'POST' && pathAndQuery.startsWith('/rpc/') === false ? { Prefer: 'return=minimal' } : {}),
+      ...(method === 'POST' && pathAndQuery.startsWith('/rpc/') === false ? { Prefer: prefer ?? 'return=minimal' } : {}),
     };
 
     let res: RestResponse;
@@ -73,7 +75,7 @@ export function createSupabaseRest({ url, serviceKey, fetchImpl, retry, timeoutM
         }
         if (err.status === 409 || code === '23505') throw new DatabaseConflictError(message || 'duplicate record');
         if (err.status === 404 || SCHEMA_CODES.has(code)) {
-          throw new DatabaseSchemaError(`Supabase does not have "${what}". Open the Supabase SQL editor and run supabase/migrations/0001_stories.sql. If you already did, check that SUPABASE_URL points at that project.`);
+          throw new DatabaseSchemaError(`Supabase does not have "${what}". Open the Supabase SQL editor and run the files in supabase/migrations (0001_stories.sql, then 0002_reader_state.sql). If you already did, check that SUPABASE_URL points at that project.`);
         }
         if (err.status >= 500 || err.status === 429 || err.status === 408) {
           throw new PipelineAbort(`Supabase is busy or unreachable (${err.status}). Please try again later.`);
@@ -110,6 +112,10 @@ export function createSupabaseRest({ url, serviceKey, fetchImpl, retry, timeoutM
 
     async insert(table, row) {
       await request('POST', `/${table}`, table, row, false);
+    },
+
+    async upsert(table, row, conflictColumn) {
+      await request('POST', `/${table}?on_conflict=${encodeURIComponent(conflictColumn)}`, table, row, false, 'resolution=merge-duplicates,return=minimal');
     },
 
     rpc: (fn, args) => request('POST', `/rpc/${fn}`, fn, args),

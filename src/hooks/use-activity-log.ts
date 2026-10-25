@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { LOCAL_CHANGE_EVENT, SYNCED_EVENT } from '../lib/accounts/local-state';
 import { ActivityEntry, appendEntry, loadActivity, saveActivity, StorageLike } from '../lib/habit/activity-log';
 
 function browserStorage(): StorageLike | null {
@@ -16,6 +17,7 @@ export function recordActivity(entry: ActivityEntry): ActivityEntry[] {
   const storage = browserStorage();
   const next = appendEntry(loadActivity(storage), entry);
   saveActivity(storage, next);
+  window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT));
   return next;
 }
 
@@ -24,7 +26,11 @@ export function useActivityLog() {
   const [log, setLog] = useState<ActivityEntry[] | null>(null);
 
   useEffect(() => {
-    setLog(loadActivity(browserStorage()));
+    const read = () => setLog(loadActivity(browserStorage()));
+    read();
+    // A sign-in sync can add history from another device.
+    window.addEventListener(SYNCED_EVENT, read);
+    return () => window.removeEventListener(SYNCED_EVENT, read);
   }, []);
 
   const record = useCallback((entry: ActivityEntry) => setLog(recordActivity(entry)), []);

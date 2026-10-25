@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import ReaderProvider from '../components/accounts/ReaderProvider';
 import MascotDock from '../components/mascot/MascotDock';
 import SiteNav from '../components/SiteNav';
 import './globals.css';
@@ -12,9 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="pb-28">
-        <SiteNav />
-        {children}
-        <MascotDock />
+        <ReaderProvider>
+          <SiteNav />
+          {children}
+          <MascotDock />
+        </ReaderProvider>
       </body>
     </html>
   );

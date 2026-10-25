@@ -35,7 +35,7 @@ export function localDateString(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-function isEntry(value: unknown): value is ActivityEntry {
+export function isActivityEntry(value: unknown): value is ActivityEntry {
   if (!value || typeof value !== 'object') return false;
   const e = value as Record<string, unknown>;
   if (typeof e.date !== 'string') return false;
@@ -55,7 +55,7 @@ export function loadActivity(storage: StorageLike | null): ActivityEntry[] {
   if (!storage) return [];
   try {
     const parsed = JSON.parse(storage.getItem(ACTIVITY_STORAGE_KEY) ?? '[]');
-    return Array.isArray(parsed) ? parsed.filter(isEntry) : [];
+    return Array.isArray(parsed) ? parsed.filter(isActivityEntry) : [];
   } catch {
     return [];
   }

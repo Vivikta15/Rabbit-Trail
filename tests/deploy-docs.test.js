@@ -25,6 +25,12 @@ test('Docs - the migration the deploy guide points at exists, and the guide says
   assert.match(deploy, /SQL Editor/);
 });
 
+test('Docs - the reader accounts migration exists and the guide says to run it', () => {
+  assert.ok(fs.existsSync(path.join(root, 'supabase', 'migrations', '0002_reader_state.sql')));
+  assert.match(deploy, /supabase\/migrations\/0002_reader_state\.sql/);
+  assert.match(deploy, /Redirect URLs/);
+});
+
 test('Docs - every setting in .env.example is explained in the deploy guide', () => {
   const names = [...read('.env.example').matchAll(/^#?\s*([A-Z][A-Z0-9_]+)=/gm)].map((m) => m[1]);
 

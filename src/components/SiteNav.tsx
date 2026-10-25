@@ -5,6 +5,7 @@ const LINKS = [
   { href: '/today', label: 'Today' },
   { href: '/connections', label: 'Connections' },
   { href: '/dashboard', label: 'Dashboard' },
+  { href: '/account', label: 'Account' },
 ];
 
 export default function SiteNav() {

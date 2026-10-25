@@ -93,6 +93,24 @@ attention, and GitHub emails you. The run's log says what.
 deployment's **Logs** in Vercel: the message names the setting that is missing. A deployment without Supabase
 settings refuses to run on purpose, rather than quietly showing a single story.
 
+## 6. Reader accounts (optional)
+
+Sign-in lets a reader keep their streak and trail across devices. The site works without it, so do this when you are ready.
+
+1. In the Supabase **SQL Editor**, run `supabase/migrations/0002_reader_state.sql` (after `0001_stories.sql`).
+2. **Authentication -> URL Configuration**: set **Site URL** to your site address (for example
+   `https://rabbittrail.vercel.app`) and add `https://rabbittrail.vercel.app/account` under **Redirect URLs**.
+3. **Email sign-in links:** Supabase's built-in sender allows only a few emails an hour. Under **Authentication ->
+   SMTP Settings** connect a sender such as Resend (it has a free tier) before real readers arrive.
+4. **Google sign-in:** create an OAuth client in Google Cloud (**APIs & Services -> Credentials -> OAuth client ID**,
+   type Web application). Add the redirect address Supabase shows under **Authentication -> Providers -> Google**,
+   then paste the client ID and secret into that Supabase page and switch Google on.
+5. In Vercel add `SUPABASE_PUBLISHABLE_KEY` (the `sb_publishable_` key from **Project Settings -> API Keys**) for
+   Production and Preview, then redeploy. Never put the secret key here: the app refuses it.
+
+**Check:** `/account` offers "Continue with Google" and an email box. Signing in and finishing a story shows
+"Your trail is saved." Whether a reader has paid is only ever set by the server, never by the browser.
+
 ## What each setting is for
 
 | Setting | Where it lives | Used by |
@@ -104,6 +122,7 @@ settings refuses to run on purpose, rather than quietly showing a single story.
 | `GEMINI_JUDGE_MODEL` (optional) | `.env.local`, GitHub variable | a second, lighter model that only checks drafts, e.g. `gemini-3.5-flash-lite`; each model has its own daily allowance |
 | `SUPABASE_URL` | `.env.local`, GitHub secret, Vercel | everything that reads or writes stories |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
+| `SUPABASE_PUBLISHABLE_KEY` (optional) | `.env.local`, Vercel | reader sign-in. The public key, sent to browsers on purpose; never the secret key |
 | `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model (default `claude-sonnet-5-5`) |
 | `STORIES_DIR` (optional) | `.env.local` | folder for local story files; ignored once Supabase is set |
 | `REQUIRE_SUPABASE` (optional) | set to `1` by the daily workflow | makes a run refuse to write to local files, so stories can only ever go to Supabase |
@@ -131,5 +150,5 @@ Anthropic or Supabase console, so revoke the old one after the new one is in pla
 
 ## Not covered yet
 
-Reader accounts and server-side reader data (streak, trail, free trial, saved archetype) still live in each
-reader's browser. That is the next piece.
+Payments and streak shields. The free trial and "subscribed" state still start in the reader's browser; once
+payments are added they move to the server, which is the only place that can mark a reader as paid.

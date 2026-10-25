@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import CuriosityMetrics from '../../components/dashboard/CuriosityMetrics';
+import SaveTrailPrompt from '../../components/accounts/SaveTrailPrompt';
 import RabbitStreakCard from '../../components/dashboard/RabbitStreakCard';
 import StreakDisplay from '../../components/dashboard/StreakDisplay';
 import TrailMap from '../../components/dashboard/TrailMap';
@@ -26,6 +27,7 @@ export default function DashboardPage() {
         <p className="text-slate-400">Loading your trail…</p>
       ) : (
         <>
+          <SaveTrailPrompt />
           {mood && <RabbitStreakCard mood={mood} />}
           <StreakDisplay streak={summary.streak} />
           <CuriosityMetrics summary={summary} />

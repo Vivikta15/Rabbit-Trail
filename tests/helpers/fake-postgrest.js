@@ -4,12 +4,12 @@
 
 const MAX_ROWS = 1000; // Supabase's default per-request cap
 
-function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } = {}) {
-  const tables = { stories: [], rejected_topics: [], generation_lock: [], generation_runs: [] };
+function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [], users = {}, authStatus } = {}) {
+  const tables = { stories: [], rejected_topics: [], generation_lock: [], generation_runs: [], reader_state: [] };
   const requests = [];
   let now = Date.now();
   const failures = [...failFirst]; // statuses to return before behaving, one per request
-  const pk = { stories: 'id', rejected_topics: 'title_lower', generation_lock: 'name' };
+  const pk = { stories: 'id', rejected_topics: 'title_lower', generation_lock: 'name', reader_state: 'user_id' };
 
   const json = (status, body) => ({
     ok: status >= 200 && status < 300,
@@ -67,6 +67,14 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } 
     const body = init.body ? JSON.parse(init.body) : undefined;
     requests.push({ url, method, headers: init.headers || {}, body, cache: init.cache });
 
+    // Supabase Auth: tells the server who a reader's token belongs to.
+    if (u.pathname === '/auth/v1/user') {
+      if (authStatus) return json(authStatus, { msg: 'auth is down' });
+      if (init.headers?.apikey !== serviceKey) return json(401, { message: 'Invalid API key' });
+      const token = /^Bearer (.+)$/.exec(init.headers?.Authorization || '')?.[1];
+      return users[token] ? json(200, users[token]) : json(401, { msg: 'invalid JWT' });
+    }
+
     if (failures.length > 0) return json(failures.shift(), { message: 'injected failure' });
     if (init.headers?.apikey !== serviceKey || init.headers?.Authorization !== `Bearer ${serviceKey}`) {
       return json(401, { message: 'Invalid API key' });
@@ -99,6 +107,15 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [] } 
     }
 
     if (method === 'GET') return json(200, applyQuery(tables[table], u.searchParams));
+
+    if (method === 'POST' && /merge-duplicates/.test(init.headers?.Prefer || '')) {
+      // An upsert: insert, or merge into the row that has the same primary key.
+      const key = u.searchParams.get('on_conflict');
+      const i = tables[table].findIndex((r) => r[key] === body[key]);
+      if (i === -1) tables[table].push({ ...body });
+      else tables[table][i] = { ...tables[table][i], ...body };
+      return empty(201);
+    }
 
     if (method === 'POST') {
       const key = pk[table];
