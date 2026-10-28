@@ -75,7 +75,7 @@ export function createSupabaseRest({ url, serviceKey, fetchImpl, retry, timeoutM
         }
         if (err.status === 409 || code === '23505') throw new DatabaseConflictError(message || 'duplicate record');
         if (err.status === 404 || SCHEMA_CODES.has(code)) {
-          throw new DatabaseSchemaError(`Supabase does not have "${what}". Open the Supabase SQL editor and run the files in supabase/migrations (0001_stories.sql, then 0002_reader_state.sql). If you already did, check that SUPABASE_URL points at that project.`);
+          throw new DatabaseSchemaError(`Supabase does not have "${what}". Open the Supabase SQL editor and run every file in supabase/migrations, in order (0001_stories.sql, 0002_reader_state.sql, 0003_launch_growth.sql). If you already did, check that SUPABASE_URL points at that project.`);
         }
         if (err.status >= 500 || err.status === 429 || err.status === 408) {
           throw new PipelineAbort(`Supabase is busy or unreachable (${err.status}). Please try again later.`);

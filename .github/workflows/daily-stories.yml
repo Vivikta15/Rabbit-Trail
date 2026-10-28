@@ -30,6 +30,13 @@ jobs:
       LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
       GEMINI_JUDGE_MODEL: ${{ vars.GEMINI_JUDGE_MODEL }}
+      # Where the shared links point, and the optional channels the daily story is posted to (step 7 of DEPLOY.md).
+      SITE_URL: ${{ vars.SITE_URL }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+      BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # Refuse to run on this runner's throwaway disk: stories must go to Supabase or nowhere.
@@ -54,3 +61,7 @@ jobs:
       - name: Write today's story
         # Scheduled runs only act when today has no story yet. A run started by hand always tries.
         run: npm run stories:generate -- ${{ github.event_name == 'schedule' && '--if-missing-today' || '' }}
+
+      - name: Share today's story
+        # Posts to the channels you have set up, once per story and channel. Does nothing if none are set up.
+        run: npm run social:post

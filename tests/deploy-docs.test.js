@@ -63,7 +63,17 @@ test('Workflow - gets its keys only from GitHub secrets and documents each one',
   const used = new Set([...workflow.matchAll(/\$\{\{\s*secrets\.([A-Z_]+)\s*\}\}/g)].map((m) => m[1]));
 
   // Both AI keys are wired (you set the one you use; the other stays empty), plus the two Supabase ones.
-  assert.deepEqual([...used].sort(), ['ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL']);
+  assert.deepEqual([...used].sort(), [
+    'ANTHROPIC_API_KEY',
+    'BLUESKY_APP_PASSWORD',
+    'BLUESKY_HANDLE',
+    'DISCORD_WEBHOOK_URL',
+    'GEMINI_API_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_URL',
+    'TELEGRAM_BOT_TOKEN',
+    'TELEGRAM_CHAT_ID',
+  ]);
   for (const name of used) assert.ok(deploy.includes(name), `DEPLOY.md does not tell you to add the ${name} secret`);
   assert.doesNotMatch(workflow, /sk-ant-|sb_secret_|AIza/);
   assert.doesNotMatch(workflow, /echo[^\n]*secrets\./i, 'a secret must never be echoed into the log');

@@ -5,10 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Clock } from 'lucide-react';
 import { ARCHETYPES } from '../../data/archetypes';
 import { recordActivity } from '../../hooks/use-activity-log';
+import { trackEvent } from '../../hooks/use-track';
 import { localDateString } from '../../lib/habit/activity-log';
 import type { PersonalizedStory } from '../../lib/llm/rewrite-engine';
 import { CHEER_EVENT } from '../../lib/mascot/mood';
 import { ArchetypeId } from '../../types';
+import { storyPath } from '../../lib/share/share';
+import ShareButton from '../share/ShareButton';
 import SourceCitations from './SourceCitations';
 
 interface Props {
@@ -17,9 +20,11 @@ interface Props {
   era: string;
   initialArchetypeId: ArchetypeId;
   initialStory: PersonalizedStory;
+  // The words for sharing this story, written on the server from the verified story.
+  shareText: string;
 }
 
-export default function StoryViewer({ storyId, topic, era, initialArchetypeId, initialStory }: Props) {
+export default function StoryViewer({ storyId, topic, era, initialArchetypeId, initialStory, shareText }: Props) {
   const [archetypeId, setArchetypeId] = useState(initialArchetypeId);
   const [story, setStory] = useState(initialStory);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +60,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
       readCounterArgument: counterSeen.current,
     });
     setFinished(true);
+    trackEvent('story_finished');
     window.dispatchEvent(new Event(CHEER_EVENT));
   }
 
@@ -152,12 +158,15 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
 
       <footer>
         {finished ? (
-          <p className="inline-flex items-center gap-2 text-emerald-300">
-            <Check size={16} aria-hidden /> Added to your trail.{' '}
-            <Link href="/dashboard" className="underline">
-              View dashboard
-            </Link>
-          </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <p className="inline-flex items-center gap-2 text-emerald-300">
+              <Check size={16} aria-hidden /> Added to your trail.{' '}
+              <Link href="/dashboard" className="underline">
+                View dashboard
+              </Link>
+            </p>
+            <ShareButton path={storyPath(storyId)} text={shareText} label="Share this story" />
+          </div>
         ) : (
           <button
             type="button"

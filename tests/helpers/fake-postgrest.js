@@ -5,11 +5,11 @@
 const MAX_ROWS = 1000; // Supabase's default per-request cap
 
 function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [], users = {}, authStatus } = {}) {
-  const tables = { stories: [], rejected_topics: [], generation_lock: [], generation_runs: [], reader_state: [] };
+  const tables = { stories: [], rejected_topics: [], generation_lock: [], generation_runs: [], reader_state: [], launch_events: [], social_posts: [] };
   const requests = [];
   let now = Date.now();
   const failures = [...failFirst]; // statuses to return before behaving, one per request
-  const pk = { stories: 'id', rejected_topics: 'title_lower', generation_lock: 'name', reader_state: 'user_id' };
+  const pk = { stories: 'id', rejected_topics: 'title_lower', generation_lock: 'name', reader_state: 'user_id', launch_events: ['day', 'name', 'visitor'], social_posts: ['story_id', 'channel'] };
 
   const json = (status, body) => ({
     ok: status >= 200 && status < 300,
@@ -119,10 +119,11 @@ function createFakePostgrest({ serviceKey, missingTables = [], failFirst = [], u
 
     if (method === 'POST') {
       const key = pk[table];
-      if (key && tables[table].some((r) => r[key] === body[key])) {
+      const keys = [].concat(key ?? []);
+      if (keys.length > 0 && tables[table].some((r) => keys.every((k) => r[k] === body[k]))) {
         return json(409, { code: '23505', message: `duplicate key value violates unique constraint "${table}_pkey"` });
       }
-      tables[table].push({ ...body, ...(key ? {} : { id: tables[table].length + 1 }) });
+      tables[table].push({ ...body, ...(keys.length > 0 ? {} : { id: tables[table].length + 1 }) });
       return empty(201); // Prefer: return=minimal: no body
     }
     return json(405, { message: 'method not allowed' });

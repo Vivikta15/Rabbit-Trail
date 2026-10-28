@@ -113,6 +113,33 @@ Sign-in lets a reader keep their streak and trail across devices. The site works
 **Check:** `/account` offers "Continue with Google" and an email box. Signing in and finishing a story shows
 "Your trail is saved." Whether a reader has paid is only ever set by the server, never by the browser.
 
+## 7. Share each story automatically (optional)
+
+After the daily story is written, the same GitHub run can post it to channels you own. Each story goes to each channel
+once, even though the job runs twice a day. Set up only the channels you want; a channel needs all of its settings.
+
+1. **Your address.** In GitHub, **Variables**, add `SITE_URL` = `https://rabbittrail.vercel.app` (or your own domain), so
+   the links in posts work.
+2. **Telegram** (secrets `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`): in Telegram, chat with **@BotFather**, send `/newbot`
+   and follow the steps; it gives a token. Create a public channel, add the bot as an **administrator**, and use the
+   channel as `TELEGRAM_CHAT_ID`, written `@yourchannel`.
+3. **Bluesky** (secrets `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD`): create a free account. In **Settings -> Privacy and
+   security -> App passwords**, make one (it looks like `xxxx-xxxx-xxxx-xxxx`). The handle is `yourname.bsky.social`.
+   Never use your main password: the app refuses it.
+4. **Discord** (secret `DISCORD_WEBHOOK_URL`): in your server, **Server Settings -> Integrations -> Webhooks -> New
+   Webhook**, choose the channel, and copy the address.
+5. In the Supabase SQL Editor run `supabase/migrations/0003_launch_growth.sql` (it also holds the visit counts).
+
+**Try it without posting:** `npm run social:post -- --dry-run` prints what would be posted. On GitHub, the **Share
+today's story** step shows the result for each channel.
+
+## Counting visitors
+
+Every visit, quiz start, quiz finish, story finish, sign-in and share is counted anonymously (a random id and the
+channel from `?utm_source=`; nothing else, and not at all if the browser sends Do Not Track). Run `npm run stats` to see
+how many people reached each step, by channel. Give each place you post its own link, for example
+`https://rabbittrail.vercel.app/?utm_source=reddit`, and the table shows which one worked.
+
 ## What each setting is for
 
 | Setting | Where it lives | Used by |
@@ -126,6 +153,10 @@ Sign-in lets a reader keep their streak and trail across devices. The site works
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, GitHub secret, Vercel | the same. It can read and write everything: server-side only |
 | `SUPABASE_PUBLISHABLE_KEY` (optional) | `.env.local`, Vercel | reader sign-in. The public key, sent to browsers on purpose; never the secret key |
 | `GOOGLE_SIGNIN_ENABLED` (optional) | Vercel | set to `1` to show the Google button, once Google is set up in Supabase |
+| `SITE_URL` (optional) | GitHub variable, Vercel | your public address, used in shared links and cards. Vercel's own address is used if this is not set |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (optional) | GitHub secrets | post each story to a Telegram channel |
+| `BLUESKY_HANDLE`, `BLUESKY_APP_PASSWORD` (optional) | GitHub secrets | post each story to Bluesky (an app password, never the main one) |
+| `DISCORD_WEBHOOK_URL` (optional) | GitHub secret | post each story to a Discord channel |
 | `STORY_MODEL` (optional) | `.env.local`, GitHub variable | which Claude model (default `claude-sonnet-5-5`) |
 | `STORIES_DIR` (optional) | `.env.local` | folder for local story files; ignored once Supabase is set |
 | `REQUIRE_SUPABASE` (optional) | set to `1` by the daily workflow | makes a run refuse to write to local files, so stories can only ever go to Supabase |

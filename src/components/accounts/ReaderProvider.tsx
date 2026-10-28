@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { trackEvent } from '../../hooks/use-track';
 import { LOCAL_CHANGE_EVENT, readLocalState, SYNCED_EVENT, writeLocalState } from '../../lib/accounts/local-state';
 import { mergeReaderStates } from '../../lib/accounts/reader-state';
 import { buildGoogleSignInUrl, clearSession, loadSession, needsRefresh, parseAuthRedirect, refreshSession, requestMagicLink, saveSession, Session } from '../../lib/accounts/session';
@@ -170,7 +171,10 @@ export default function ReaderProvider({ children }: { children: React.ReactNode
       if (back) {
         // Take the tokens out of the address bar straight away.
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        if (back.ok) saveSession(storage, back.session);
+        if (back.ok) {
+          saveSession(storage, back.session);
+          trackEvent('signed_in');
+        }
         else setMessage(back.message);
       }
 

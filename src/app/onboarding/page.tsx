@@ -1,5 +1,22 @@
+import type { Metadata } from 'next';
 import QuizWizard from '../../components/quiz/QuizWizard';
+import { ARCHETYPES } from '../../data/archetypes';
 import { parseSharedArchetype } from '../../lib/share/archetype-share';
+
+export function generateMetadata({ searchParams }: { searchParams: { archetype?: string | string[] } }): Metadata {
+  const raw = Array.isArray(searchParams.archetype) ? searchParams.archetype[0] : searchParams.archetype;
+  const id = parseSharedArchetype(raw);
+  if (!id) return {};
+  const a = ARCHETYPES[id];
+  const title = `I'm ${a.name}. What's your curiosity archetype?`;
+  const image = `/api/og?archetype=${id}`;
+  return {
+    title: `${title} · Rabbit Trail`,
+    description: a.tagline,
+    openGraph: { title, description: a.tagline, images: [image] },
+    twitter: { card: 'summary_large_image', title, description: a.tagline, images: [image] },
+  };
+}
 
 export default function OnboardingPage({
   searchParams,

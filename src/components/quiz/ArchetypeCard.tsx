@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, Compass, FlaskConical, Hourglass, LucideIcon, Map, Share2, Sparkles, Search } from 'lucide-react';
+import { Compass, FlaskConical, Hourglass, LucideIcon, Map, Sparkles, Search } from 'lucide-react';
 import { ARCHETYPES } from '../../data/archetypes';
-import { buildArchetypeSharePath } from '../../lib/share/archetype-share';
+import { archetypePath, archetypeShareText } from '../../lib/share/share';
+import ShareButton from '../share/ShareButton';
 import { ArchetypeId } from '../../types';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -18,19 +18,6 @@ const ICONS: Record<string, LucideIcon> = {
 export default function ArchetypeCard({ archetypeId }: { archetypeId: ArchetypeId }) {
   const archetype = ARCHETYPES[archetypeId];
   const Icon = ICONS[archetype.iconName] ?? Compass;
-  const [copied, setCopied] = useState(false);
-
-  async function copyShareLink() {
-    const url = `${window.location.origin}${buildArchetypeSharePath(archetypeId)}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      window.prompt('Copy your archetype link:', url);
-    }
-  }
-
   return (
     <article
       className="overflow-hidden rounded-2xl border bg-slate-900 shadow-xl"
@@ -73,14 +60,7 @@ export default function ArchetypeCard({ archetypeId }: { archetypeId: ArchetypeI
       </div>
 
       <div className="border-t border-slate-800 p-4 sm:px-8">
-        <button
-          type="button"
-          onClick={copyShareLink}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-        >
-          {copied ? <Check size={16} aria-hidden /> : <Share2 size={16} aria-hidden />}
-          {copied ? 'Link copied' : 'Share my archetype'}
-        </button>
+        <ShareButton path={archetypePath(archetypeId)} text={archetypeShareText(archetype.name)} label="Share my archetype" />
       </div>
     </article>
   );

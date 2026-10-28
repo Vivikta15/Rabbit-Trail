@@ -31,7 +31,7 @@ export default function MascotDock() {
     };
   }, []);
 
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/rabbit') || streak === null) return null;
+  if (pathname === '/' || pathname.startsWith('/dashboard') || pathname.startsWith('/rabbit') || streak === null) return null;
 
   const mood = softenMood(cheering ? 'cheering' : moodForPath(pathname, streak), calm);
 
