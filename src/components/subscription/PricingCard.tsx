@@ -11,7 +11,7 @@ export default function PricingCard({ onSubscribe }: { onSubscribe: () => void }
       <ul className="mt-4 space-y-2 text-sm text-slate-300">
         {['A new sourced story every day', 'Stories written in your curiosity style', 'The full Connection Finder', 'Your trail and streak, always yours'].map((item) => (
           <li key={item} className="flex items-start gap-2">
-            <Check size={16} className="mt-0.5 shrink-0 text-amber-400" aria-hidden />
+            <Check size={16} className="mt-0.5 shrink-0 text-amber-700" aria-hidden />
             {item}
           </li>
         ))}
@@ -20,7 +20,7 @@ export default function PricingCard({ onSubscribe }: { onSubscribe: () => void }
         type="button"
         onClick={onSubscribe}
         autoFocus
-        className="mt-6 w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        className="mt-6 w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-cream hover:bg-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
       >
         Subscribe
       </button>

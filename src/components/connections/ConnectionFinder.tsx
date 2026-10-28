@@ -47,7 +47,7 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
   }
 
   const inputClass =
-    'w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400';
+    'w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700';
 
   return (
     <section className="space-y-6">
@@ -70,7 +70,7 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2 font-semibold text-slate-950 hover:bg-amber-300 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2 font-semibold text-cream hover:bg-amber-500 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           <Search size={16} aria-hidden />
           {loading ? 'Searching…' : 'Find the connection'}
@@ -79,7 +79,7 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
 
       <div aria-live="polite">
         {error && (
-          <p role="alert" className="text-sm text-red-400">
+          <p role="alert" className="text-sm text-red-800">
             {error}
           </p>
         )}
@@ -100,7 +100,7 @@ export default function ConnectionFinder({ suggestions }: { suggestions: string[
                   });
                   setSavedKey(`${result.trail.conceptA}|${result.trail.conceptB}`);
                 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
               >
                 {savedKey === `${result.trail.conceptA}|${result.trail.conceptB}` ? <Check size={16} aria-hidden /> : <Star size={16} aria-hidden />}
                 {savedKey === `${result.trail.conceptA}|${result.trail.conceptB}` ? 'Saved to favorites' : 'Save this connection'}

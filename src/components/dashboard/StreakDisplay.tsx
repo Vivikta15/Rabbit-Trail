@@ -3,7 +3,7 @@ import type { ActivitySummary } from '../../lib/habit/activity-log';
 
 export default function StreakDisplay({ streak }: { streak: ActivitySummary['streak'] }) {
   const Icon = streak.isPaused ? Pause : Flame;
-  const tone = streak.isPaused ? 'border-sky-800 text-sky-300' : 'border-amber-500/60 text-amber-300';
+  const tone = streak.isPaused ? 'border-sky-600 text-sky-800' : 'border-amber-500/60 text-amber-700';
 
   return (
     <section aria-label="Reading streak" className={`rounded-2xl border bg-slate-900 p-6 ${tone}`}>

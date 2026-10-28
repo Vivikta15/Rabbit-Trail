@@ -24,7 +24,7 @@ export default function PathGraphView({ trail }: { trail: ConnectionTrail }) {
                 className="trail-reveal rounded-xl border border-slate-700 bg-slate-900 p-4"
                 style={{ animationDelay: `${index * 250}ms` }}
               >
-                <p className="text-xs uppercase tracking-widest text-amber-400">{node.domain}</p>
+                <p className="text-xs uppercase tracking-widest text-amber-700">{node.domain}</p>
                 <h3 className="mt-1 text-lg font-semibold">{node.title}</h3>
                 <details className="mt-2 text-sm text-slate-300">
                   <summary className="cursor-pointer text-slate-400 hover:text-slate-200">Rabbit hole</summary>
@@ -36,7 +36,7 @@ export default function PathGraphView({ trail }: { trail: ConnectionTrail }) {
                   className="trail-reveal my-2 ml-4 flex gap-3 border-l-2 border-amber-400/40 py-2 pl-4 text-sm"
                   style={{ animationDelay: `${index * 250 + 125}ms` }}
                 >
-                  <ArrowDown size={16} className="mt-0.5 shrink-0 text-amber-400" aria-hidden />
+                  <ArrowDown size={16} className="mt-0.5 shrink-0 text-amber-700" aria-hidden />
                   <div>
                     <p className="font-medium">{step.relationship}</p>
                     <p className="mt-1 text-slate-300">{step.historicalOrScientificBasis}</p>

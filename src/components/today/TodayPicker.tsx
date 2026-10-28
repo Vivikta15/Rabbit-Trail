@@ -30,7 +30,7 @@ export default function TodayPicker({ index }: { index: StoryIndexEntry[] }) {
       <section className="space-y-3 text-center">
         <h1 className="text-2xl font-bold">You&apos;ve followed every trail we have</h1>
         <p className="text-slate-300">A new story arrives each day, chosen to follow where your curiosity has been heading.</p>
-        <Link href="/dashboard" className="inline-block text-amber-300 underline">
+        <Link href="/dashboard" className="inline-block text-amber-700 underline">
           See your trail
         </Link>
       </section>

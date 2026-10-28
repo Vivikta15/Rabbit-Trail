@@ -35,7 +35,7 @@ export default function ShareButton({ path, text, label, className }: { path: st
     <button
       type="button"
       onClick={() => void share()}
-      className={className ?? 'inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'}
+      className={className ?? 'inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700'}
     >
       {copied ? <Check size={16} aria-hidden /> : <Share2 size={16} aria-hidden />}
       {copied ? 'Link copied' : label}

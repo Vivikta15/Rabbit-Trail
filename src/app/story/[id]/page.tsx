@@ -43,7 +43,7 @@ export default async function StoryPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
-      <p className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-amber-400">Rabbit Trail</p>
+      <p className="mb-6 text-sm font-semibold uppercase tracking-[0.3em] text-amber-700">Rabbit Trail</p>
       <AccessGate feature="story" storyId={story.id}>
         <StoryViewer
           key={archetypeId}

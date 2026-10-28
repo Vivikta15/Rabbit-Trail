@@ -99,7 +99,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
           id="archetype-switcher"
           value={archetypeId}
           onChange={(e) => switchArchetype(e.target.value as ArchetypeId)}
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 sm:w-auto"
+          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700 sm:w-auto"
         >
           {Object.values(ARCHETYPES).map((a) => (
             <option key={a.id} value={a.id}>
@@ -108,7 +108,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
           ))}
         </select>
         {error && (
-          <p role="alert" className="mt-2 text-sm text-red-400">
+          <p role="alert" className="mt-2 text-sm text-red-800">
             {error}
           </p>
         )}
@@ -119,7 +119,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
         <p className="mt-2 inline-flex items-center gap-1 text-sm text-slate-400">
           <Clock size={14} aria-hidden /> {story.readingMinutes} min read
         </p>
-        <p className="mt-4 text-xl italic text-amber-300">{story.hook}</p>
+        <p className="mt-4 text-xl italic text-amber-700">{story.hook}</p>
       </header>
 
       <section className="space-y-4 text-slate-300">
@@ -138,8 +138,8 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
         <p className="text-slate-300">{story.analogy}</p>
       </section>
 
-      <section ref={counterRef} className="rounded-xl border border-red-900/60 bg-red-950/30 p-5">
-        <h3 className="mb-2 text-lg font-semibold text-red-300">The other side of the ledger</h3>
+      <section ref={counterRef} className="rounded-xl border border-red-300 bg-red-100 p-5">
+        <h3 className="mb-2 text-lg font-semibold text-red-800">The other side of the ledger</h3>
         <p>
           <strong>Counter-thesis:</strong> {story.counterArgument.thesis}
         </p>
@@ -159,7 +159,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
       <footer>
         {finished ? (
           <div className="flex flex-wrap items-center gap-4">
-            <p className="inline-flex items-center gap-2 text-emerald-300">
+            <p className="inline-flex items-center gap-2 text-emerald-800">
               <Check size={16} aria-hidden /> Added to your trail.{' '}
               <Link href="/dashboard" className="underline">
                 View dashboard
@@ -171,7 +171,7 @@ export default function StoryViewer({ storyId, topic, era, initialArchetypeId, i
           <button
             type="button"
             onClick={finishStory}
-            className="rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="rounded-lg bg-amber-400 px-4 py-3 font-semibold text-cream hover:bg-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
           >
             I&apos;ve finished this story
           </button>

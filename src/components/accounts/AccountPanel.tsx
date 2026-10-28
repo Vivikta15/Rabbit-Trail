@@ -33,7 +33,7 @@ export default function AccountPanel() {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="rounded-lg border border-slate-600 px-4 py-2 text-slate-200 hover:border-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          className="rounded-lg border border-slate-600 px-4 py-2 text-slate-200 hover:border-amber-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           Sign out
         </button>
@@ -53,7 +53,7 @@ export default function AccountPanel() {
   return (
     <section aria-label="Sign in" className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-5">
       {message && (
-        <p role="alert" className="rounded-lg bg-slate-800 p-3 text-amber-200">
+        <p role="alert" className="rounded-lg bg-slate-800 p-3 text-amber-700">
           {message}
         </p>
       )}
@@ -63,7 +63,7 @@ export default function AccountPanel() {
         <button
           type="button"
           onClick={signInWithGoogle}
-          className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-cream hover:bg-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           Continue with Google
         </button>
@@ -81,17 +81,17 @@ export default function AccountPanel() {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="you@example.com"
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         />
         <button
           type="submit"
           disabled={sending}
-          className="w-full rounded-lg border border-slate-600 px-4 py-2 text-slate-100 hover:border-amber-300 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          className="w-full rounded-lg border border-slate-600 px-4 py-2 text-slate-100 hover:border-amber-600 disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           {sending ? 'Sending…' : 'Email me a link'}
         </button>
         {result && (
-          <p role="status" className={result.ok ? 'text-emerald-300' : 'text-amber-200'}>
+          <p role="status" className={result.ok ? 'text-emerald-800' : 'text-amber-700'}>
             {result.text}
           </p>
         )}

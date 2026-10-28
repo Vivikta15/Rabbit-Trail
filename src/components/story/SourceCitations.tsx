@@ -7,7 +7,7 @@ export default function SourceCitations({ facts }: { facts: StoryFact[] }) {
       {facts.map((fact, index) => (
         <li key={fact.sourceUrl} className="rounded-xl border border-slate-800 bg-slate-900 p-4">
           <p>
-            <span className="mr-2 font-semibold text-amber-400">{index + 1}.</span>
+            <span className="mr-2 font-semibold text-amber-700">{index + 1}.</span>
             {fact.claim}
           </p>
           <details className="mt-2 text-sm">
@@ -16,7 +16,7 @@ export default function SourceCitations({ facts }: { facts: StoryFact[] }) {
               href={fact.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-start gap-1 text-amber-400 underline decoration-amber-400/40 hover:text-amber-300"
+              className="mt-2 inline-flex items-start gap-1 text-amber-700 underline decoration-amber-400/40 hover:text-amber-800"
             >
               {fact.sourceTitle}
               <ExternalLink size={14} className="mt-0.5 shrink-0" aria-hidden />

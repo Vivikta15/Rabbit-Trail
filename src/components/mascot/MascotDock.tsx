@@ -48,7 +48,7 @@ export default function MascotDock() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? 'Hide the rabbit’s note' : 'Show the rabbit’s note'}
-        className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+        className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
       >
         <Rabbit mood={mood} size={68} />
       </button>

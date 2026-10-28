@@ -41,7 +41,7 @@ export default function TrailMap({ trail }: { trail: TrailNode[] }) {
               tabIndex={0}
               aria-label={`${node.label}, first visited ${node.firstVisited}`}
               aria-pressed={isActive}
-              className="cursor-pointer outline-none [&:focus-visible>circle]:stroke-white"
+              className="cursor-pointer outline-none [&:focus-visible>circle]:stroke-slate-100"
               onClick={() => setSelected(isActive ? null : i)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

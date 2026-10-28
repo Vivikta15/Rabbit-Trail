@@ -14,7 +14,7 @@ export default function RabbitStreakCard({ mood }: { mood: StreakMood }) {
     <section aria-label="Your rabbit" className="flex items-center gap-5 rounded-2xl border border-slate-800 bg-slate-900 p-5">
       <Rabbit mood={shown} size={112} className="shrink-0" />
       <div>
-        <p className="text-lg font-semibold text-amber-200">{mascotLine(shown)}</p>
+        <p className="text-lg font-semibold text-amber-700">{mascotLine(shown)}</p>
         <CalmToggle className="mt-3" />
       </div>
     </section>

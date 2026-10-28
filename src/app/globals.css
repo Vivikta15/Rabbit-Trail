@@ -56,3 +56,71 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .rabbit-bob, .rabbit-hop, .rabbit-sway, .rabbit-twinkle { animation: none; }
 }
+
+
+/* ---- The pixel world: scene, sky and small movements ---------------------------------------------------------- */
+
+@keyframes px-drift { from { transform: translateX(0); } to { transform: translateX(400px); } }
+@keyframes px-drift-wide { from { transform: translateX(0); } to { transform: translateX(240px); } }
+@keyframes px-sway { from { transform: rotate(-0.9deg); } to { transform: rotate(1.1deg); } }
+@keyframes px-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(0.6px); } }
+@keyframes px-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
+@keyframes px-blink { 0%, 93%, 100% { opacity: 0; } 95%, 97% { opacity: 1; } }
+@keyframes px-ripple { 0% { transform: scale(0.3); opacity: 0.9; } 100% { transform: scale(1.5); opacity: 0; } }
+@keyframes px-shimmer { 0%, 100% { opacity: 0.2; transform: translateX(0); } 50% { opacity: 1; transform: translateX(3px); } }
+@keyframes px-leaf {
+  0% { transform: translate(0, -8px) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  35% { transform: translate(12px, 36px) rotate(110deg); }
+  65% { transform: translate(-6px, 82px) rotate(200deg); }
+  92% { opacity: 1; }
+  100% { transform: translate(14px, 124px) rotate(300deg); opacity: 0; }
+}
+@keyframes px-leaf-wide {
+  0% { transform: translate(0, -6px) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  35% { transform: translate(8px, 34px) rotate(110deg); }
+  65% { transform: translate(-5px, 70px) rotate(200deg); }
+  92% { opacity: 1; }
+  100% { transform: translate(10px, 108px) rotate(300deg); opacity: 0; }
+}
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pop-in { 0% { opacity: 0; transform: translateY(14px) scale(0.97); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+.px-drift { animation: px-drift linear infinite; }
+.px-drift-wide { animation: px-drift-wide linear infinite; }
+.px-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: px-sway ease-in-out infinite alternate; }
+.px-breathe { animation: px-breathe 3.4s ease-in-out infinite; }
+.px-bob { animation: px-bob 2.6s ease-in-out infinite; }
+.px-blink { animation: px-blink 5.5s linear infinite; }
+.px-ripple { transform-box: fill-box; transform-origin: 50% 50%; animation: px-ripple 3.4s ease-out infinite; }
+.px-ripple-late { animation-delay: 1.7s; }
+.px-shimmer { animation: px-shimmer ease-in-out infinite; }
+.px-leaf { transform-box: fill-box; transform-origin: 50% 50%; animation: px-leaf linear infinite; }
+.px-leaf-wide { transform-box: fill-box; transform-origin: 50% 50%; animation: px-leaf-wide linear infinite; }
+
+/* Each page eases in, and the cards inside it pop in one after another. */
+/* `backwards`, not `both`: once finished, no transform is left on <main>, so full-screen pop-ups inside it still work. */
+main { animation: page-in 0.5s ease-out backwards; }
+.pop-in { animation: pop-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.float-y { animation: float-y 3.6s ease-in-out infinite; }
+
+/* The coral buttons feel like game buttons: a solid ledge that you press down. */
+a[class*='bg-amber-400'], button[class*='bg-amber-400'] {
+  box-shadow: 0 4px 0 #6f221f;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease;
+}
+a[class*='bg-amber-400']:hover, button[class*='bg-amber-400']:hover { transform: translateY(-1px); box-shadow: 0 5px 0 #6f221f; }
+a[class*='bg-amber-400']:active, button[class*='bg-amber-400']:active { transform: translateY(3px); box-shadow: 0 1px 0 #6f221f; }
+
+/* Cards lift a little when you point at them. */
+.lift { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.lift:hover { transform: translateY(-2px); box-shadow: 0 4px 0 rgba(15, 47, 40, 0.18); }
+
+@media (prefers-reduced-motion: reduce) {
+  .px-drift, .px-drift-wide, .px-sway, .px-breathe, .px-bob, .px-blink, .px-ripple, .px-shimmer, .float-y, .pop-in, main { animation: none !important; }
+  .px-leaf, .px-leaf-wide { display: none; }
+  a[class*='bg-amber-400'], button[class*='bg-amber-400'], .lift { transition: none; }
+  html { scroll-behavior: auto; }
+}

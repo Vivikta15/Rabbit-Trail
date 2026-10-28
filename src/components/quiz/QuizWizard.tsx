@@ -23,7 +23,7 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
         <button
           type="button"
           onClick={() => setStarted(true)}
-          className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="w-full rounded-lg bg-amber-400 px-4 py-3 font-semibold text-cream hover:bg-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           Discover your own archetype
         </button>
@@ -38,7 +38,7 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
         <ArchetypeCard archetypeId={topArchetype} />
         <Link
           href="/today"
-          className="block w-full rounded-lg bg-amber-400 px-4 py-3 text-center font-semibold text-slate-950 hover:bg-amber-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          className="block w-full rounded-lg bg-amber-400 px-4 py-3 text-center font-semibold text-cream hover:bg-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
         >
           Read today&apos;s story
         </Link>
@@ -97,7 +97,7 @@ export default function QuizWizard({ sharedArchetypeId }: { sharedArchetypeId: A
                   startTrial();
                 }
               }}
-              className="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-left hover:border-amber-400 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 text-left hover:border-amber-600 hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
             >
               {option.text}
             </button>
