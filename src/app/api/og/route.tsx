@@ -5,7 +5,6 @@ import { getStoryById } from '../../../lib/stories/catalog';
 import { getRepository } from '../../../lib/stories/get-repository';
 import { makeRabbit } from '../../../lib/pixel/sprites';
 import { AMBER, SLATE } from '../../../lib/theme/palette';
-import PixelImage from '../../../components/pixel/PixelArt';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +14,17 @@ const INK = SLATE[100];
 const ACCENT = AMBER[700];
 const MUTED = SLATE[400];
 
-// The pixel rabbit from the site, in its happy mood, drawn as plain rectangles the image renderer understands.
+// The pixel rabbit from the site, as plain SVG rectangles. The image renderer cannot draw a component nested inside an
+// SVG, so this is built from ordinary elements and used as a value, not as <Component />.
 const rabbit = makeRabbit('happy');
-function Rabbit() {
-  return <PixelImage sprite={rabbit} px={8} />;
-}
+const PX = 8;
+const rabbitImage = (
+  <svg width={rabbit.width * PX} height={rabbit.height * PX} viewBox={`0 0 ${rabbit.width} ${rabbit.height}`} shapeRendering="crispEdges">
+    {rabbit.runs.map((r) => (
+      <rect key={`${r.x},${r.y}`} x={r.x} y={r.y} width={r.w + 0.03} height={1.03} fill={r.color} />
+    ))}
+  </svg>
+);
 
 function Card({ eyebrow, title, line, accent }: { eyebrow: string; title: string; line: string; accent: string }) {
   return (
@@ -34,7 +39,7 @@ function Card({ eyebrow, title, line, accent }: { eyebrow: string; title: string
         <div style={{ display: 'flex', fontSize: 26, color: MUTED }}>One sourced story a day · every claim checked against its source</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        <Rabbit />
+        {rabbitImage}
       </div>
     </div>
   );
